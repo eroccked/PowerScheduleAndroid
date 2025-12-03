@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Графік Світла</string>
+    <string name="city_name">Івано-Франківськ</string>
+
+    <!-- Main Screen -->
+    <string name="my_queues">Мої черги</string>
+    <string name="refresh">Оновити</string>
+    <string name="add_queue">Додати чергу</string>
+    <string name="no_saved_queues">Немає збережених черг</string>
+    <string name="add_first_queue">Додайте першу чергу нижче</string>
+
+    <!-- Queue Card -->
+    <string name="queue_label">Черга:</string>
+    <string name="power_on">Світло є</string>
+    <string name="power_off">Відключення</string>
+    <string name="loading">Завантаження…</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel_name">Сповіщення про відключення</string>
+    <string name="notification_channel_description">Сповіщення перед плановими відключеннями електроенергії</string>
+    <string name="schedule_updated">📊 Графік оновлено!</string>
+    <string name="schedule_changed_for">Графік для \"%s\" змінився. Натисніть для перегляду.</string>
+
+    <!-- Time -->
+    <string name="in_x_hours">через %d год</string>
+    <string name="in_x_hours_y_minutes">через %d год %d хв</string>
+    <string name="in_x_minutes">через %d хв</string>
+    <string name="now">зараз</string>
+</resources>

@@ -1,0 +1,198 @@
+package com.powerschedule.app.ui.main
+
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.powerschedule.app.data.api.APIService
+import com.powerschedule.app.data.models.PowerQueue
+import com.powerschedule.app.data.models.QueueCardState
+import com.powerschedule.app.data.notification.BackgroundUpdateWorker
+import com.powerschedule.app.data.notification.NotificationService
+import com.powerschedule.app.data.storage.StorageService
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import java.text.SimpleDateFormat
+import java.util.*
+
+class MainViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val storageService = StorageService.getInstance(application)
+    private val apiService = APIService.getInstance()
+    private val notificationService = NotificationService.getInstance(application)
+
+    private val _queues = MutableStateFlow<List<PowerQueue>>(emptyList())
+    val queues: StateFlow<List<PowerQueue>> = _queues.asStateFlow()
+
+    private val _queueCardStates = MutableStateFlow<Map<String, QueueCardState>>(emptyMap())
+    val queueCardStates: StateFlow<Map<String, QueueCardState>> = _queueCardStates.asStateFlow()
+
+    private val _showError = MutableStateFlow(false)
+    val showError: StateFlow<Boolean> = _showError.asStateFlow()
+
+    private val _errorMessage = MutableStateFlow("")
+    val errorMessage: StateFlow<String> = _errorMessage.asStateFlow()
+
+    private val json = Json { ignoreUnknownKeys = true }
+    private val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+    private val dateFormatter = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+
+    init {
+        loadQueues()
+        startBackgroundUpdates()
+    }
+
+    fun loadQueues() {
+        _queues.value = storageService.loadQueues()
+    }
+
+    fun addQueue(name: String, queueNumber: String) {
+        if (name.isBlank()) {
+            showErrorAlert("❌ Введіть назву!")
+            return
+        }
+
+        if (!isValidQueueFormat(queueNumber)) {
+            showErrorAlert("❌ Невірний формат черги!")
+            return
+        }
+
+        val newQueue = PowerQueue(name = name, queueNumber = queueNumber)
+        storageService.addQueue(newQueue)
+        loadQueues()
+    }
+
+    fun deleteQueue(queue: PowerQueue) {
+        notificationService.cancelNotifications(queue.id)
+        storageService.deleteQueue(queue)
+        loadQueues()
+    }
+
+    fun toggleNotifications(queue: PowerQueue) {
+        val updatedQueue = queue.copy(isNotificationsEnabled = !queue.isNotificationsEnabled)
+        storageService.updateQueue(updatedQueue)
+        if (!updatedQueue.isNotificationsEnabled) {
+            notificationService.cancelNotifications(queue.id)
+        }
+        loadQueues()
+    }
+
+    fun loadQueuePreview(queue: PowerQueue) {
+        viewModelScope.launch {
+            updateQueueCardState(queue.id) { it.copy(isLoading = true) }
+
+            val result = apiService.fetchSchedule(queue.queueNumber)
+
+            result.onSuccess { scheduleData ->
+                val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+                val isPowerOn = scheduleData.hourlyTimeline[currentHour]
+                val isToday = isDateToday(scheduleData.eventDate)
+
+                val preview = when {
+                    isPowerOn -> {
+                        val nextShutdown = scheduleData.shutdowns.firstOrNull { shutdown ->
+                            val parts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
+                            parts.size == 2 && parts[0] > currentHour
+                        }
+
+                        when {
+                            nextShutdown != null -> "Відключення о ${nextShutdown.from}"
+                            scheduleData.shutdowns.isNotEmpty() -> {
+                                if (isToday) "Сьогодні відключень більше немає"
+                                else "Відключення завтра о ${scheduleData.shutdowns.first().from}"
+                            }
+                            else -> "Відключень немає"
+                        }
+                    }
+                    else -> {
+                        val nextPowerOn = findNextPowerOn(scheduleData.hourlyTimeline, currentHour)
+                        if (nextPowerOn != null) "Увімкнуть о ~$nextPowerOn:00"
+                        else "Поточний стан"
+                    }
+                }
+
+                updateQueueCardState(queue.id) {
+                    it.copy(
+                        isPowerOn = isPowerOn,
+                        schedulePreview = preview,
+                        lastUpdated = timeFormatter.format(Date()),
+                        isLoading = false,
+                        scheduleData = scheduleData
+                    )
+                }
+
+                if (queue.isNotificationsEnabled) {
+                    val minutesBefore = storageService.loadNotificationMinutes()
+                    notificationService.scheduleShutdownNotifications(
+                        shutdowns = scheduleData.shutdowns,
+                        queueName = queue.name,
+                        queueId = queue.id,
+                        minutesBefore = minutesBefore
+                    )
+                }
+
+                val jsonString = json.encodeToString(scheduleData.shutdowns)
+                storageService.saveScheduleJSON(jsonString, queue.id)
+
+            }.onFailure {
+                updateQueueCardState(queue.id) {
+                    it.copy(
+                        isPowerOn = false,
+                        schedulePreview = "Помилка завантаження",
+                        lastUpdated = timeFormatter.format(Date()),
+                        isLoading = false
+                    )
+                }
+            }
+        }
+    }
+
+    fun refreshAllQueues() {
+        _queues.value.forEach { loadQueuePreview(it) }
+    }
+
+    private fun startBackgroundUpdates() {
+        val interval = storageService.loadUpdateInterval()
+        BackgroundUpdateWorker.schedule(getApplication(), interval)
+    }
+
+    private fun updateQueueCardState(queueId: String, update: (QueueCardState) -> QueueCardState) {
+        val currentStates = _queueCardStates.value.toMutableMap()
+        val currentState = currentStates[queueId] ?: QueueCardState()
+        currentStates[queueId] = update(currentState)
+        _queueCardStates.value = currentStates
+    }
+
+    private fun isValidQueueFormat(queue: String): Boolean {
+        return "^\\d+\\.\\d+$".toRegex().matches(queue)
+    }
+
+    private fun isDateToday(dateString: String): Boolean {
+        return try {
+            val eventDate = dateFormatter.parse(dateString) ?: return true
+            val today = Calendar.getInstance()
+            val eventCal = Calendar.getInstance().apply { time = eventDate }
+            today.get(Calendar.YEAR) == eventCal.get(Calendar.YEAR) &&
+                    today.get(Calendar.DAY_OF_YEAR) == eventCal.get(Calendar.DAY_OF_YEAR)
+        } catch (e: Exception) { true }
+    }
+
+    private fun findNextPowerOn(timeline: List<Boolean>, currentHour: Int): Int? {
+        for (hour in (currentHour + 1) until 24) {
+            if (timeline[hour]) return hour
+        }
+        return null
+    }
+
+    private fun showErrorAlert(message: String) {
+        _errorMessage.value = message
+        _showError.value = true
+    }
+
+    fun dismissError() {
+        _showError.value = false
+    }
+}

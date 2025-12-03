@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Gradient Colors -->
+    <color name="gradient_start">#FFB8E0E8</color>
+    <color name="gradient_middle">#FFC0E5DB</color>
+    <color name="gradient_end">#FFC8E6D5</color>
+
+    <!-- Status Colors -->
+    <color name="status_green">#FF4CAF50</color>
+    <color name="status_red">#FFF44336</color>
+    <color name="status_red_light">#FFFF5252</color>
+
+    <!-- Text Colors -->
+    <color name="text_primary">#FF000000</color>
+    <color name="text_secondary">#99000000</color>
+
+    <!-- Other -->
+    <color name="white">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
+    <color name="notification_orange">#FFFF9500</color>
+</resources>
