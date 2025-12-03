@@ -22,10 +22,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.powerschedule.app.data.models.ScheduleData
-import com.powerschedule.app.data.models.Shutdown
 import com.powerschedule.app.ui.components.*
 import com.powerschedule.app.ui.theme.*
-import androidx.compose.material3.Divider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

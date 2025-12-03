@@ -1,6 +1,7 @@
 package com.powerschedule.app.ui.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -9,7 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -26,7 +27,6 @@ fun NotificationTimePickerScreen(
     onNavigateBack: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
-
     var selectedHours by remember { mutableIntStateOf(state.notificationMinutes / 60) }
     var selectedMinutes by remember { mutableIntStateOf(state.notificationMinutes % 60) }
 
@@ -36,169 +36,78 @@ fun NotificationTimePickerScreen(
     }
 
     GradientBackground {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-        ) {
-            // Top Bar
+        Column(Modifier.fillMaxSize().statusBarsPadding()) {
             TopAppBar(
                 title = { },
                 navigationIcon = {
                     TextButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.Default.ChevronLeft,
-                            contentDescription = null,
-                            tint = TextPrimary,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Назад",
-                            color = TextPrimary
-                        )
+                        Icon(Icons.Default.ChevronLeft, null, Modifier.size(14.dp), tint = TextPrimary)
+                        Spacer(Modifier.width(4.dp))
+                        Text("Назад", color = TextPrimary)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
 
-            // Content
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 18.dp)
-            ) {
-                // Title
-                Text(
-                    text = "Попереджати за",
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Виберіть за скільки часу отримати сповіщення перед відключенням",
-                    fontSize = 14.sp,
-                    color = TextSecondary
-                )
+            Column(Modifier.fillMaxSize().padding(horizontal = 18.dp)) {
+                Text("Попереджати за", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                Spacer(Modifier.height(8.dp))
+                Text("Виберіть за скільки часу отримати сповіщення перед відключенням", fontSize = 14.sp, color = TextSecondary)
 
-                Spacer(modifier = Modifier.weight(0.3f))
+                Spacer(Modifier.weight(0.3f))
 
                 // Time Picker
                 AppCard {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(18.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Hours Picker
-                        NumberPickerColumn(
-                            value = selectedHours,
-                            onValueChange = { selectedHours = it },
-                            range = 0..5
-                        )
-
-                        Text(
-                            text = "год",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = TextSecondary,
-                            modifier = Modifier.padding(horizontal = 10.dp)
-                        )
-
-                        // Minutes Picker
-                        NumberPickerColumn(
-                            value = selectedMinutes,
-                            onValueChange = { selectedMinutes = it },
-                            range = listOf(0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55)
-                        )
-
-                        Text(
-                            text = "хв",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = TextSecondary,
-                            modifier = Modifier.padding(horizontal = 10.dp)
-                        )
+                    Row(Modifier.fillMaxWidth().padding(18.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                        NumberPickerColumn(selectedHours, { selectedHours = it }, 0..5)
+                        Text("год", fontSize = 18.sp, fontWeight = FontWeight.Medium, color = TextSecondary, modifier = Modifier.padding(horizontal = 10.dp))
+                        NumberPickerColumn(selectedMinutes, { selectedMinutes = it }, listOf(0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55))
+                        Text("хв", fontSize = 18.sp, fontWeight = FontWeight.Medium, color = TextSecondary, modifier = Modifier.padding(horizontal = 10.dp))
                     }
                 }
 
-                Spacer(modifier = Modifier.weight(0.3f))
+                Spacer(Modifier.weight(0.3f))
 
-                // Example Notification
+                // Example
                 Column {
-                    Text(
-                        text = "Приклад сповіщення:",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextSecondary
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
+                    Text("Приклад сповіщення:", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary)
+                    Spacer(Modifier.height(10.dp))
                     AppCard(cornerRadius = 11.dp) {
-                        Row(
-                            modifier = Modifier.padding(14.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Notifications,
-                                contentDescription = null,
-                                tint = NotificationOrange,
-                                modifier = Modifier.size(21.dp)
-                            )
-
-                            Spacer(modifier = Modifier.width(14.dp))
-
+                        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Notifications, null, Modifier.size(21.dp), tint = NotificationOrange)
+                            Spacer(Modifier.width(14.dp))
                             Column {
-                                Text(
-                                    text = "⚡️ Скоро відключення!",
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = TextPrimary
-                                )
-                                Text(
-                                    text = getExampleText(selectedHours, selectedMinutes),
-                                    fontSize = 13.sp,
-                                    color = TextSecondary
-                                )
+                                Text("⚡️ Скоро відключення!", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                                Text(getExampleText(selectedHours, selectedMinutes), fontSize = 13.sp, color = TextSecondary)
                             }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.weight(0.4f))
+                Spacer(Modifier.weight(0.4f))
 
                 // Save Button
-                Button(
-                    onClick = {
-                        val totalMinutes = selectedHours * 60 + selectedMinutes
-                        viewModel.setNotificationMinutes(if (totalMinutes > 0) totalMinutes else 5)
-                        onNavigateBack()
-                    },
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 28.dp)
-                        .shadow(
-                            elevation = 7.dp,
-                            shape = RoundedCornerShape(14.dp),
-                            ambientColor = Color.Black.copy(alpha = 0.1f)
-                        ),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = CardBackground,
-                        contentColor = TextPrimary
-                    )
+                        .background(CardBackground, RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(14.dp))
+                        .clickable {
+                            val totalMinutes = selectedHours * 60 + selectedMinutes
+                            viewModel.setNotificationMinutes(if (totalMinutes > 0) totalMinutes else 5)
+                            onNavigateBack()
+                        }
                 ) {
                     Text(
-                        text = "Зберегти",
+                        "Зберегти",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(vertical = 6.dp)
+                        color = TextPrimary,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 14.dp),
+                        textAlign = TextAlign.Center
                     )
                 }
             }
@@ -207,62 +116,30 @@ fun NotificationTimePickerScreen(
 }
 
 @Composable
-private fun NumberPickerColumn(
-    value: Int,
-    onValueChange: (Int) -> Unit,
-    range: IntRange
-) {
-    NumberPickerColumnImpl(
-        value = value,
-        onValueChange = onValueChange,
-        values = range.toList()
-    )
+private fun NumberPickerColumn(value: Int, onValueChange: (Int) -> Unit, range: IntRange) {
+    NumberPickerColumnImpl(value, onValueChange, range.toList())
 }
 
 @Composable
-private fun NumberPickerColumn(
-    value: Int,
-    onValueChange: (Int) -> Unit,
-    range: List<Int>
-) {
-    NumberPickerColumnImpl(
-        value = value,
-        onValueChange = onValueChange,
-        values = range
-    )
+private fun NumberPickerColumn(value: Int, onValueChange: (Int) -> Unit, values: List<Int>) {
+    NumberPickerColumnImpl(value, onValueChange, values)
 }
 
 @Composable
-private fun NumberPickerColumnImpl(
-    value: Int,
-    onValueChange: (Int) -> Unit,
-    values: List<Int>
-) {
+private fun NumberPickerColumnImpl(value: Int, onValueChange: (Int) -> Unit, values: List<Int>) {
     val currentIndex = values.indexOf(value).coerceAtLeast(0)
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        IconButton(
-            onClick = {
-                if (currentIndex < values.size - 1) {
-                    onValueChange(values[currentIndex + 1])
-                }
-            }
-        ) {
-            Text(
-                text = "▲",
-                fontSize = 16.sp,
-                color = TextSecondary
-            )
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        IconButton(onClick = { if (currentIndex < values.size - 1) onValueChange(values[currentIndex + 1]) }) {
+            Text("▲", fontSize = 16.sp, color = TextSecondary)
         }
-
-        Surface(
-            shape = RoundedCornerShape(8.dp),
-            color = Color.White.copy(alpha = 0.5f)
+        Box(
+            modifier = Modifier
+                .background(Color.White.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(8.dp))
         ) {
             Text(
-                text = value.toString(),
+                value.toString(),
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Medium,
                 color = TextPrimary,
@@ -270,19 +147,8 @@ private fun NumberPickerColumnImpl(
                 textAlign = TextAlign.Center
             )
         }
-
-        IconButton(
-            onClick = {
-                if (currentIndex > 0) {
-                    onValueChange(values[currentIndex - 1])
-                }
-            }
-        ) {
-            Text(
-                text = "▼",
-                fontSize = 16.sp,
-                color = TextSecondary
-            )
+        IconButton(onClick = { if (currentIndex > 0) onValueChange(values[currentIndex - 1]) }) {
+            Text("▼", fontSize = 16.sp, color = TextSecondary)
         }
     }
 }
@@ -298,6 +164,5 @@ private fun getExampleText(hours: Int, minutes: Int): String {
         totalMins > 0 -> "через $totalMins хв"
         else -> "зараз"
     }
-
     return "Дім: відключення о 14:00 ($timeText)"
 }

@@ -1,7 +1,6 @@
 package com.powerschedule.app.ui.main
 
 import androidx.compose.foundation.background
-import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,7 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -23,8 +22,8 @@ import com.powerschedule.app.data.models.PowerQueue
 import com.powerschedule.app.data.models.QueueCardState
 import com.powerschedule.app.ui.components.*
 import com.powerschedule.app.ui.theme.*
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.foundation.layout.offset
 
 @Composable
 fun MainScreen(
@@ -133,13 +132,15 @@ fun MainScreen(
                 }
 
                 item {
-                    Card(
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { showAddQueueDialog = true },
-                        shape = RoundedCornerShape(14.dp),
-                        colors = CardDefaults.cardColors(containerColor = CardBackground),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 7.dp)
+                            .background(
+                                color = CardBackground,
+                                shape = RoundedCornerShape(14.dp)
+                            )
+                            .clip(RoundedCornerShape(14.dp))
+                            .clickable { showAddQueueDialog = true }
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
@@ -188,7 +189,16 @@ private fun QueueCard(
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
-    AppCard(modifier = Modifier.clickable { onCardClick() }) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = CardBackground,
+                shape = RoundedCornerShape(14.dp)
+            )
+            .clip(RoundedCornerShape(14.dp))
+            .clickable { onCardClick() }
+    ) {
         Column {
             Column(modifier = Modifier.padding(18.dp)) {
                 Row(
@@ -199,7 +209,7 @@ private fun QueueCard(
                     Text(queue.name, fontSize = 21.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
 
                     Box {
-                        IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
+                        IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp).offset(x = 6.dp)) {
                             Icon(Icons.Default.MoreVert, "Меню", tint = TextPrimary)
                         }
 
@@ -229,13 +239,26 @@ private fun QueueCard(
 
                 Spacer(Modifier.height(14.dp))
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    StatusIndicator(isPowerOn = state.isPowerOn)
-                    Spacer(Modifier.width(10.dp))
-                    Column {
-                        Text(if (state.isPowerOn) "Світло є" else "Відключення", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                        Text(state.schedulePreview, fontSize = 12.sp, color = TextSecondary)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        StatusIndicator(isPowerOn = state.isPowerOn)
+                        Spacer(Modifier.width(10.dp))
+                        Column {
+                            Text(if (state.isPowerOn) "Світло є" else "Відключення", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                            Text(state.schedulePreview, fontSize = 12.sp, color = TextSecondary)
+                        }
                     }
+
+                    Icon(
+                        imageVector = if (queue.isNotificationsEnabled) Icons.Default.Notifications else Icons.Default.NotificationsOff,
+                        contentDescription = if (queue.isNotificationsEnabled) "Сповіщення увімкнено" else "Сповіщення вимкнено",
+                        modifier = Modifier.size(20.dp),
+                        tint = if (queue.isNotificationsEnabled) TextPrimary else TextTertiary
+                    )
                 }
             }
 

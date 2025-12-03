@@ -2,6 +2,7 @@ package com.powerschedule.app.ui.main
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -13,7 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -74,10 +75,11 @@ fun AddQueueDialog(
 
                     // Name Field
                     Text("Назва", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary, modifier = Modifier.padding(start = 4.dp, bottom = 8.dp))
-                    Surface(
-                        modifier = Modifier.fillMaxWidth().shadow(7.dp, RoundedCornerShape(14.dp)),
-                        shape = RoundedCornerShape(14.dp),
-                        color = CardBackground
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(CardBackground, RoundedCornerShape(14.dp))
+                            .clip(RoundedCornerShape(14.dp))
                     ) {
                         TextField(
                             value = name,
@@ -99,10 +101,11 @@ fun AddQueueDialog(
 
                     // Queue Picker
                     Text("Черга", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary, modifier = Modifier.padding(start = 4.dp, bottom = 8.dp))
-                    Surface(
-                        modifier = Modifier.fillMaxWidth().shadow(7.dp, RoundedCornerShape(14.dp)),
-                        shape = RoundedCornerShape(14.dp),
-                        color = CardBackground
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(CardBackground, RoundedCornerShape(14.dp))
+                            .clip(RoundedCornerShape(14.dp))
                     ) {
                         Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                             Row(
@@ -124,7 +127,12 @@ fun AddQueueDialog(
                     Spacer(Modifier.height(16.dp))
 
                     // Info
-                    Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp), color = Color.White.copy(alpha = 0.5f)) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color.White.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                            .clip(RoundedCornerShape(10.dp))
+                    ) {
                         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Info, null, Modifier.size(14.dp), tint = TextTertiary)
                             Spacer(Modifier.width(9.dp))
@@ -135,13 +143,24 @@ fun AddQueueDialog(
                     Spacer(Modifier.weight(1f))
 
                     // Add Button
-                    Button(
-                        onClick = { onAddQueue(name, queueNumber) },
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 18.dp).shadow(7.dp, RoundedCornerShape(12.dp)),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = CardBackground, contentColor = TextPrimary)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 18.dp)
+                            .background(CardBackground, RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onAddQueue(name, queueNumber) }
                     ) {
-                        Text("Додати чергу", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(vertical = 4.dp))
+                        Text(
+                            "Додати чергу",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 14.dp),
+                            textAlign = TextAlign.Center
+                        )
                     }
                 }
             }
@@ -155,8 +174,19 @@ private fun NumberPicker(value: Int, onValueChange: (Int) -> Unit, range: IntRan
         IconButton(onClick = { if (value < range.last) onValueChange(value + 1) }) {
             Text("▲", fontSize = 16.sp, color = TextSecondary)
         }
-        Surface(shape = RoundedCornerShape(8.dp), color = Color.White.copy(alpha = 0.5f)) {
-            Text(value.toString(), fontSize = 28.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp), textAlign = TextAlign.Center)
+        Box(
+            modifier = Modifier
+                .background(Color.White.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(8.dp))
+        ) {
+            Text(
+                value.toString(),
+                fontSize = 28.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                textAlign = TextAlign.Center
+            )
         }
         IconButton(onClick = { if (value > range.first) onValueChange(value - 1) }) {
             Text("▼", fontSize = 16.sp, color = TextSecondary)

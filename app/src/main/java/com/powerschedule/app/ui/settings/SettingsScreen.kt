@@ -2,9 +2,11 @@ package com.powerschedule.app.ui.settings
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -12,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -116,9 +119,17 @@ fun SettingsScreen(
                 // Info
                 SectionHeader("Інформація")
                 AppCard {
-                    SettingsRowItem(Icons.Default.Link, "Джерело даних", null, {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://be-svitlo.oe.if.ua")))
-                    }) { Icon(Icons.Default.OpenInNew, null, Modifier.size(12.dp), tint = TextTertiary) }
+                    Column {
+                        SettingsRowItem(Icons.Default.Link, "Джерело даних", null, {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://be-svitlo.oe.if.ua")))
+                        }) { Icon(Icons.Default.OpenInNew, null, Modifier.size(12.dp), tint = TextTertiary) }
+
+                        Divider(Modifier.padding(start = 60.dp), color = TextTertiary.copy(alpha = 0.3f))
+
+                        SettingsRowItem(Icons.Default.Send, "Розробник", "@buhra_t", {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/buhra_t")))
+                        }) { Icon(Icons.Default.OpenInNew, null, Modifier.size(12.dp), tint = TextTertiary) }
+                    }
                 }
 
                 Spacer(Modifier.height(40.dp))
