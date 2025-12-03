@@ -90,7 +90,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
                 val currentMinute = Calendar.getInstance().get(Calendar.MINUTE)
                 val currentTotalMinutes = currentHour * 60 + currentMinute
-                val isPowerOn = scheduleData.hourlyTimeline[currentHour]
+                val isPowerOn = !scheduleData.shutdowns.any { shutdown ->
+                    val fromParts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
+                    val toParts = shutdown.to.split(":").mapNotNull { it.toIntOrNull() }
+                    if (fromParts.size == 2 && toParts.size == 2) {
+                        val fromMinutes = fromParts[0] * 60 + fromParts[1]
+                        val toMinutes = toParts[0] * 60 + toParts[1]
+                        currentTotalMinutes >= fromMinutes && currentTotalMinutes < toMinutes
+                    } else false
+                }
                 val isToday = isDateToday(scheduleData.eventDate)
 
                 val preview = when {
