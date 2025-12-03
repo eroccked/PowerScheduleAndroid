@@ -16,6 +16,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.powerschedule.app.ui.theme.*
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import com.powerschedule.app.R
 
 @Composable
 fun GradientBackground(
@@ -94,10 +97,23 @@ fun LoadingIndicator(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        CircularProgressIndicator(
-            modifier = Modifier.size(48.dp),
-            color = TextPrimary
-        )
+        Box(
+            modifier = Modifier
+                .size(100.dp)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(GradientStart, GradientMiddle, GradientEnd)
+                    ),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.ic_light_bulb),
+                contentDescription = null,
+                modifier = Modifier.size(60.dp)
+            )
+        }
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = "Завантаження...",
