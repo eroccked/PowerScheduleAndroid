@@ -24,6 +24,9 @@ import com.powerschedule.app.ui.components.*
 import com.powerschedule.app.ui.theme.*
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.Lifecycle
 
 @Composable
 fun MainScreen(
@@ -37,6 +40,24 @@ fun MainScreen(
     val errorMessage by viewModel.errorMessage.collectAsState()
 
     var showAddQueueDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        viewModel.loadQueues()
+    }
+
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.loadQueues()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     LaunchedEffect(queues) {
         queues.forEach { viewModel.loadQueuePreview(it) }
