@@ -90,38 +90,43 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
                 val currentMinute = Calendar.getInstance().get(Calendar.MINUTE)
                 val currentTotalMinutes = currentHour * 60 + currentMinute
-                val isPowerOn = !scheduleData.shutdowns.any { shutdown ->
-                    val fromParts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
-                    val toParts = shutdown.to.split(":").mapNotNull { it.toIntOrNull() }
-                    if (fromParts.size == 2 && toParts.size == 2) {
-                        val fromMinutes = fromParts[0] * 60 + fromParts[1]
-                        val toMinutes = toParts[0] * 60 + toParts[1]
-                        currentTotalMinutes >= fromMinutes && currentTotalMinutes < toMinutes
-                    } else false
-                }
                 val isToday = isDateToday(scheduleData.eventDate)
 
-                val preview = when {
-                    isPowerOn -> {
-                        val nextShutdown = scheduleData.shutdowns.firstOrNull { shutdown ->
-                            val parts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
-                            if (parts.size == 2) {
-                                val shutdownMinutes = parts[0] * 60 + parts[1]
-                                shutdownMinutes > currentTotalMinutes
-                            } else false
-                        }
+                val isPowerOn = if (isToday) {
+                    !scheduleData.shutdowns.any { shutdown ->
+                        val fromParts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
+                        val toParts = shutdown.to.split(":").mapNotNull { it.toIntOrNull() }
+                        if (fromParts.size == 2 && toParts.size == 2) {
+                            val fromMinutes = fromParts[0] * 60 + fromParts[1]
+                            val toMinutes = toParts[0] * 60 + toParts[1]
+                            currentTotalMinutes >= fromMinutes && currentTotalMinutes < toMinutes
+                        } else false
+                    }
+                } else {
+                    true // Якщо графік на завтра - зараз світло є
+                }
 
-                        when {
-                            nextShutdown != null -> "Відключення о ${nextShutdown.from}"
-                            scheduleData.shutdowns.isNotEmpty() -> {
-                                if (isToday) "Сьогодні відключень більше немає"
-                                else "Відключення завтра о ${scheduleData.shutdowns.first().from}"
-                            }
-                            else -> "Відключень немає"
+                val futureShutdownsToday = if (isToday) {
+                    scheduleData.shutdowns.filter { shutdown ->
+                        val parts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
+                        if (parts.size == 2) {
+                            val shutdownMinutes = parts[0] * 60 + parts[1]
+                            shutdownMinutes > currentTotalMinutes
+                        } else false
+                    }
+                } else {
+                    emptyList()
+                }
+
+                val preview = when {
+                    !isToday -> {
+                        if (scheduleData.shutdowns.isNotEmpty()) {
+                            "Завтра відключення о ${scheduleData.shutdowns.first().from}"
+                        } else {
+                            "Завтра відключень немає"
                         }
                     }
-                    else -> {
-                        // Знаходимо поточне відключення і коли воно закінчується
+                    !isPowerOn -> {
                         val currentShutdown = scheduleData.shutdowns.firstOrNull { shutdown ->
                             val fromParts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
                             val toParts = shutdown.to.split(":").mapNotNull { it.toIntOrNull() }
@@ -135,10 +140,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         if (currentShutdown != null) {
                             "Увімкнуть о ${currentShutdown.to}"
                         } else {
-                            val nextPowerOn = findNextPowerOn(scheduleData.hourlyTimeline, currentHour)
-                            if (nextPowerOn != null) "Увімкнуть о $nextPowerOn:00"
-                            else "Поточний стан"
+                            "Поточний стан невідомий"
                         }
+                    }
+                    futureShutdownsToday.isNotEmpty() -> {
+                        "Відключення о ${futureShutdownsToday.first().from}"
+                    }
+                    scheduleData.shutdowns.isNotEmpty() -> {
+                        "Сьогодні відключень більше немає"
+                    }
+                    else -> {
+                        "Відключень немає"
                     }
                 }
 
@@ -206,13 +218,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             today.get(Calendar.YEAR) == eventCal.get(Calendar.YEAR) &&
                     today.get(Calendar.DAY_OF_YEAR) == eventCal.get(Calendar.DAY_OF_YEAR)
         } catch (e: Exception) { true }
-    }
-
-    private fun findNextPowerOn(timeline: List<Boolean>, currentHour: Int): Int? {
-        for (hour in (currentHour + 1) until 24) {
-            if (timeline[hour]) return hour
-        }
-        return null
     }
 
     private fun showErrorAlert(message: String) {
