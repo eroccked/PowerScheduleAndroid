@@ -62,7 +62,14 @@ class PowerScheduleWidget : AppWidgetProvider() {
                 return
             }
 
-            val queue = queues.first()
+            // Отримуємо збережену чергу для цього віджета
+            val savedQueueId = storageService.loadWidgetQueueId(appWidgetId)
+            val queue = if (savedQueueId != null) {
+                queues.find { it.id == savedQueueId } ?: queues.first()
+            } else {
+                queues.first()
+            }
+
             views.setTextViewText(R.id.widget_name, queue.name)
             views.setTextViewText(R.id.widget_queue_number, queue.queueNumber)
 

@@ -88,4 +88,16 @@ class StorageService private constructor(context: Context) {
     fun loadScheduleJSON(queueId: String): String? {
         return prefs.getString("$SCHEDULE_PREFIX$queueId", null)
     }
+
+    fun saveWidgetQueueId(widgetId: Int, queueId: String) {
+        prefs.edit().putString("widget_queue_$widgetId", queueId).apply()
+    }
+
+    fun loadWidgetQueueId(widgetId: Int): String? {
+        return prefs.getString("widget_queue_$widgetId", null)
+    }
+
+    fun removeWidgetQueueId(widgetId: Int) {
+        prefs.edit().remove("widget_queue_$widgetId").apply()
+    }
 }
