@@ -30,9 +30,26 @@ fun NotificationTimePickerScreen(
     var selectedHours by remember { mutableIntStateOf(state.notificationMinutes / 60) }
     var selectedMinutes by remember { mutableIntStateOf(state.notificationMinutes % 60) }
 
+    var isSaving by remember { mutableStateOf(false) }
+
     LaunchedEffect(state.notificationMinutes) {
         selectedHours = state.notificationMinutes / 60
         selectedMinutes = state.notificationMinutes % 60
+    }
+
+    LaunchedEffect(isSaving) {
+        if (isSaving) {
+            val totalMinutes = selectedHours * 60 + selectedMinutes
+
+            // 1. Асинхронний виклик (чекаємо завершення suspend функції)
+            viewModel.setNotificationMinutes(if (totalMinutes > 0) totalMinutes else 5)
+
+            // 2. Навігація відбувається ЛИШЕ ПІСЛЯ завершення збереження
+            onNavigateBack()
+
+            // Скидаємо прапорець
+            isSaving = false
+        }
     }
 
     GradientBackground {
@@ -94,9 +111,8 @@ fun NotificationTimePickerScreen(
                         .background(CardBackground, RoundedCornerShape(14.dp))
                         .clip(RoundedCornerShape(14.dp))
                         .clickable {
-                            val totalMinutes = selectedHours * 60 + selectedMinutes
-                            viewModel.setNotificationMinutes(if (totalMinutes > 0) totalMinutes else 5)
-                            onNavigateBack()
+                            // ⭐ ЗМІНА: Встановлюємо прапор isSaving, який запустить LaunchedEffect
+                            isSaving = true
                         }
                 ) {
                     Text(
@@ -114,7 +130,6 @@ fun NotificationTimePickerScreen(
         }
     }
 }
-
 @Composable
 private fun NumberPickerColumn(value: Int, onValueChange: (Int) -> Unit, range: IntRange) {
     NumberPickerColumnImpl(value, onValueChange, range.toList())

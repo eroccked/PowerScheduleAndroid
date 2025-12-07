@@ -51,6 +51,7 @@ fun MainScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.loadQueues()
+                viewModel.refreshAllQueues()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

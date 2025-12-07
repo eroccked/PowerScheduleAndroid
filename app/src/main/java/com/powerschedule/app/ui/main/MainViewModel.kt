@@ -17,6 +17,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.Job
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -40,6 +41,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
     private val dateFormatter = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
 
+    private var refreshJob: Job? = null
+
     init {
         loadQueues()
         startBackgroundUpdates()
@@ -47,6 +50,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadQueues() {
         _queues.value = storageService.loadQueues()
+        refreshAllQueues()
+    }
+
+    fun refreshAllQueues() {
+        refreshJob?.cancel()
+
+        refreshJob = viewModelScope.launch {
+            _queues.value.forEach { loadQueuePreview(it) }
+        }
     }
 
     fun addQueue(name: String, queueNumber: String) {
@@ -103,7 +115,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         } else false
                     }
                 } else {
-                    true // Якщо графік на завтра - зараз світло є
+                    true
                 }
 
                 val futureShutdownsToday = if (isToday) {
@@ -188,10 +200,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }
-    }
-
-    fun refreshAllQueues() {
-        _queues.value.forEach { loadQueuePreview(it) }
     }
 
     private fun startBackgroundUpdates() {
