@@ -39,7 +39,11 @@ data class Shutdown(
             if (fromParts.size != 2 || toParts.size != 2) return 0
 
             val fromMinutes = fromParts[0] * 60 + fromParts[1]
-            val toMinutes = toParts[0] * 60 + toParts[1]
+            var toMinutes = toParts[0] * 60 + toParts[1]
+
+            if (toMinutes <= fromMinutes) {
+                toMinutes += 1440
+            }
 
             return toMinutes - fromMinutes
         }
@@ -77,7 +81,7 @@ data class ScheduleData(
 
     val hourlyTimeline: List<Boolean>
         get() {
-            val timeline = MutableList(24) { true }
+            val timeline = MutableList(24) { true } // true = power ON
 
             for (shutdown in shutdowns) {
                 val fromParts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
@@ -88,8 +92,23 @@ data class ScheduleData(
                 val fromHour = fromParts[0]
                 val toHour = toParts[0]
 
-                for (hour in fromHour until minOf(toHour, 24)) {
-                    timeline[hour] = false
+                if (fromHour < toHour) {
+                    // Звичайний випадок
+                    for (hour in fromHour until toHour) {
+                        timeline[hour] = false // false = power OFF
+                    }
+                } else {
+                    // ВИПРАВЛЕННЯ: Перехід через північ (наприклад, 23:00 до 01:00)
+
+                    // 1. Години до кінця доби (наприклад, 23 до 24)
+                    for (hour in fromHour until 24) {
+                        timeline[hour] = false
+                    }
+
+                    // 2. Години після півночі (наприклад, 0 до 1)
+                    for (hour in 0 until toHour) {
+                        timeline[hour] = false
+                    }
                 }
             }
 
