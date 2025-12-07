@@ -49,7 +49,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _state.value = _state.value.copy(updateInterval = minutes)
         BackgroundUpdateWorker.schedule(getApplication(), minutes)
     }
-    
+
     suspend fun setNotificationMinutes(minutes: Int) {
         storageService.saveNotificationMinutes(minutes)
         _state.value = _state.value.copy(notificationMinutes = minutes)
