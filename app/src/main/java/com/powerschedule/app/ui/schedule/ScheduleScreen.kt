@@ -123,10 +123,31 @@ private fun ScheduleContent(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
+        // Header з назвою та перемикачем
         item {
-            Column(modifier = Modifier.padding(top = 4.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
+                horizontalAlignment = Alignment.Start
+            ) {
                 Text(queue.name, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                 Text("Черга ${queue.queueNumber}", fontSize = 12.sp, color = TextSecondary)
+
+                // Перемикач днів по центру
+                if (hasTwoDays) {
+                    Spacer(Modifier.height(16.dp))
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        DayPickerSegmented(
+                            selectedIndex = selectedDayIndex,
+                            labels = dayLabels,
+                            onDaySelected = onDaySelected
+                        )
+                    }
+                }
             }
         }
 
@@ -163,17 +184,6 @@ private fun ScheduleContent(
                             colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = StatusGreen))
                     }
                 }
-            }
-        }
-
-        // Day Picker (якщо є два дні)
-        if (hasTwoDays) {
-            item {
-                DayPicker(
-                    selectedIndex = selectedDayIndex,
-                    labels = dayLabels,
-                    onDaySelected = onDaySelected
-                )
             }
         }
 
@@ -218,7 +228,7 @@ private fun ScheduleContent(
         if (scheduleData.shutdowns.isEmpty()) {
             item {
                 AppCard {
-                    Text("Сьогодні відключень немає", fontSize = 13.sp, color = TextSecondary,
+                    Text("Відключень немає", fontSize = 13.sp, color = TextSecondary,
                         modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), textAlign = TextAlign.Center)
                 }
             }
@@ -256,54 +266,58 @@ private fun ScheduleContent(
 }
 
 @Composable
-private fun DayPicker(
+private fun DayPickerSegmented(
     selectedIndex: Int,
     labels: Pair<String, String>,
     onDaySelected: (Int) -> Unit
 ) {
-    AppCard {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(6.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            DayPickerButton(
-                text = labels.first,
-                isSelected = selectedIndex == 0,
-                onClick = { onDaySelected(0) },
-                modifier = Modifier.weight(1f)
+    Row(
+        modifier = Modifier
+            .background(
+                color = Color.White.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(10.dp)
             )
-            DayPickerButton(
-                text = labels.second,
-                isSelected = selectedIndex == 1,
-                onClick = { onDaySelected(1) },
-                modifier = Modifier.weight(1f)
-            )
-        }
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(0.dp)
+    ) {
+        DaySegmentButton(
+            text = labels.first,
+            isSelected = selectedIndex == 0,
+            onClick = { onDaySelected(0) }
+        )
+        DaySegmentButton(
+            text = labels.second,
+            isSelected = selectedIndex == 1,
+            onClick = { onDaySelected(1) }
+        )
     }
 }
 
 @Composable
-private fun DayPickerButton(
+private fun DaySegmentButton(
     text: String,
     isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onClick: () -> Unit
 ) {
     Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(if (isSelected) StatusGreen else Color.Transparent)
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .then(
+                if (isSelected) {
+                    Modifier.background(Color.White, RoundedCornerShape(8.dp))
+                } else {
+                    Modifier
+                }
+            )
             .clickable { onClick() }
-            .padding(vertical = 12.dp),
+            .padding(horizontal = 24.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = text,
             fontSize = 14.sp,
             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-            color = if (isSelected) Color.White else TextSecondary
+            color = TextPrimary
         )
     }
 }

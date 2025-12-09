@@ -75,65 +75,19 @@ class ScheduleViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
 
-            val result = apiService.fetchSchedule(currentQueue.queueNumber)
+            val result = apiService.fetchAllSchedules(currentQueue.queueNumber)
 
-            result.onSuccess { scheduleData ->
-                val today = Calendar.getInstance()
-                val eventDate = try {
-                    dateFormatter.parse(scheduleData.eventDate)
-                } catch (e: Exception) {
-                    null
-                }
-
-                val isEventToday = if (eventDate != null) {
-                    val eventCal = Calendar.getInstance().apply { time = eventDate }
-                    today.get(Calendar.YEAR) == eventCal.get(Calendar.YEAR) &&
-                            today.get(Calendar.DAY_OF_YEAR) == eventCal.get(Calendar.DAY_OF_YEAR)
-                } else true
-
-                val isEventYesterday = if (eventDate != null) {
-                    val eventCal = Calendar.getInstance().apply { time = eventDate }
-                    val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
-                    yesterday.get(Calendar.YEAR) == eventCal.get(Calendar.YEAR) &&
-                            yesterday.get(Calendar.DAY_OF_YEAR) == eventCal.get(Calendar.DAY_OF_YEAR)
-                } else false
-
-                val isEventTomorrow = if (eventDate != null) {
-                    val eventCal = Calendar.getInstance().apply { time = eventDate }
-                    val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
-                    tomorrow.get(Calendar.YEAR) == eventCal.get(Calendar.YEAR) &&
-                            tomorrow.get(Calendar.DAY_OF_YEAR) == eventCal.get(Calendar.DAY_OF_YEAR)
-                } else false
-
-                when {
-                    isEventToday -> {
-                        _todaySchedule.value = scheduleData
-                        _dayLabels.value = Pair("Сьогодні", "Завтра")
-                        fetchTomorrowSchedule(currentQueue.queueNumber)
-                    }
-                    isEventTomorrow -> {
-                        _tomorrowSchedule.value = scheduleData
-                        _dayLabels.value = Pair("Сьогодні", "Завтра")
-                        _hasTwoDays.value = false // Поки тільки завтра
-                        _selectedDayIndex.value = 0
-                    }
-                    isEventYesterday -> {
-                        _todaySchedule.value = scheduleData
-                        _dayLabels.value = Pair("Вчора", "Сьогодні")
-                        fetchTomorrowSchedule(currentQueue.queueNumber)
-                    }
-                    else -> {
-                        _todaySchedule.value = scheduleData
-                    }
-                }
+            result.onSuccess { schedules ->
+                processSchedules(schedules)
 
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    scheduleData = scheduleData
+                    scheduleData = _todaySchedule.value ?: schedules.firstOrNull()
                 )
 
+                // Сповіщення для сьогоднішнього графіка
                 if (_notificationsEnabled.value) {
-                    scheduleNotifications(scheduleData)
+                    _todaySchedule.value?.let { scheduleNotifications(it) }
                 }
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = error.message)
@@ -141,32 +95,76 @@ class ScheduleViewModel(
         }
     }
 
-    private suspend fun fetchTomorrowSchedule(queueNumber: String) {
+    private fun processSchedules(schedules: List<ScheduleData>) {
+        val today = Calendar.getInstance()
+        val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+        val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
 
-        val result = apiService.fetchSchedule(queueNumber)
-        result.onSuccess { scheduleData ->
-            val today = Calendar.getInstance()
+        var firstDaySchedule: ScheduleData? = null
+        var secondDaySchedule: ScheduleData? = null
+        var labels = Pair("Сьогодні", "Завтра")
+
+        for (schedule in schedules) {
             val eventDate = try {
-                dateFormatter.parse(scheduleData.eventDate)
+                dateFormatter.parse(schedule.eventDate)
             } catch (e: Exception) {
-                null
-            }
+                continue
+            } ?: continue
 
-            if (eventDate != null) {
-                val eventCal = Calendar.getInstance().apply { time = eventDate }
-                val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
+            val eventCal = Calendar.getInstance().apply { time = eventDate }
 
-                val isEventTomorrow = tomorrow.get(Calendar.YEAR) == eventCal.get(Calendar.YEAR) &&
-                        tomorrow.get(Calendar.DAY_OF_YEAR) == eventCal.get(Calendar.DAY_OF_YEAR)
+            val isToday = today.get(Calendar.YEAR) == eventCal.get(Calendar.YEAR) &&
+                    today.get(Calendar.DAY_OF_YEAR) == eventCal.get(Calendar.DAY_OF_YEAR)
 
-                if (isEventTomorrow && _todaySchedule.value != null) {
-                    _tomorrowSchedule.value = scheduleData
-                    _hasTwoDays.value = true
-                } else if (_todaySchedule.value == null) {
-                    _todaySchedule.value = scheduleData
+            val isYesterday = yesterday.get(Calendar.YEAR) == eventCal.get(Calendar.YEAR) &&
+                    yesterday.get(Calendar.DAY_OF_YEAR) == eventCal.get(Calendar.DAY_OF_YEAR)
+
+            val isTomorrow = tomorrow.get(Calendar.YEAR) == eventCal.get(Calendar.YEAR) &&
+                    tomorrow.get(Calendar.DAY_OF_YEAR) == eventCal.get(Calendar.DAY_OF_YEAR)
+
+            when {
+                isYesterday -> {
+                    if (firstDaySchedule == null) {
+                        firstDaySchedule = schedule
+                        labels = Pair("Вчора", "Сьогодні")
+                    }
+                }
+                isToday -> {
+                    if (labels.first == "Вчора") {
+                        // Вчора вже є, сьогодні буде другим
+                        secondDaySchedule = schedule
+                    } else {
+                        // Сьогодні перший
+                        if (firstDaySchedule == null) {
+                            firstDaySchedule = schedule
+                            labels = Pair("Сьогодні", "Завтра")
+                        } else {
+                            secondDaySchedule = schedule
+                        }
+                    }
+                }
+                isTomorrow -> {
+                    if (firstDaySchedule != null) {
+                        secondDaySchedule = schedule
+                    } else {
+                        // Тільки завтра (рідкісний випадок)
+                        firstDaySchedule = schedule
+                        labels = Pair("Завтра", "")
+                    }
                 }
             }
         }
+
+        // Якщо нічого не знайшли - беремо перший з списку
+        if (firstDaySchedule == null && schedules.isNotEmpty()) {
+            firstDaySchedule = schedules.first()
+        }
+
+        _todaySchedule.value = firstDaySchedule
+        _tomorrowSchedule.value = secondDaySchedule
+        _dayLabels.value = labels
+        _hasTwoDays.value = firstDaySchedule != null && secondDaySchedule != null
+        _selectedDayIndex.value = 0
     }
 
     fun selectDay(index: Int) {
@@ -186,7 +184,7 @@ class ScheduleViewModel(
         updateQueueSettings()
 
         if (enabled) {
-            _uiState.value.scheduleData?.let { scheduleNotifications(it) }
+            _todaySchedule.value?.let { scheduleNotifications(it) }
         } else {
             _queue.value?.let { notificationService.cancelNotifications(it.id) }
         }

@@ -55,6 +55,7 @@ class APIService {
         }
     }
 
+    // Повертає один день (для сумісності)
     suspend fun fetchSchedule(queueNumber: String): Result<ScheduleData> {
         return try {
             val url = "$BASE_URL/schedule-by-queue?queue=$queueNumber"
@@ -75,6 +76,40 @@ class APIService {
             )
 
             Result.success(scheduleData)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(APIError.ServerError)
+        }
+    }
+
+    // Повертає всі дні (новий метод)
+    suspend fun fetchAllSchedules(queueNumber: String): Result<List<ScheduleData>> {
+        return try {
+            val url = "$BASE_URL/schedule-by-queue?queue=$queueNumber"
+
+            val response: List<ScheduleResponse> = client.get(url).body()
+
+            if (response.isEmpty()) {
+                return Result.failure(APIError.NoData)
+            }
+
+            val schedules = response.mapNotNull { scheduleResponse ->
+                val shutdowns = scheduleResponse.queues[queueNumber]
+                if (shutdowns != null) {
+                    ScheduleData(
+                        eventDate = scheduleResponse.eventDate,
+                        createdAt = scheduleResponse.createdAt,
+                        scheduleApprovedSince = scheduleResponse.scheduleApprovedSince,
+                        shutdowns = shutdowns
+                    )
+                } else null
+            }
+
+            if (schedules.isEmpty()) {
+                return Result.failure(APIError.NoData)
+            }
+
+            Result.success(schedules)
         } catch (e: Exception) {
             e.printStackTrace()
             Result.failure(APIError.ServerError)

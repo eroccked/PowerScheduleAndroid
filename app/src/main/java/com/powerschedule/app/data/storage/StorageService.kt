@@ -100,4 +100,32 @@ class StorageService private constructor(context: Context) {
     fun removeWidgetQueueId(widgetId: Int) {
         prefs.edit().remove("widget_queue_$widgetId").apply()
     }
+    fun saveWidgetCache(widgetId: Int, name: String, queueNumber: String, status: String, preview: String, updated: String) {
+        prefs.edit()
+            .putString("widget_cache_${widgetId}_name", name)
+            .putString("widget_cache_${widgetId}_queue", queueNumber)
+            .putString("widget_cache_${widgetId}_status", status)
+            .putString("widget_cache_${widgetId}_preview", preview)
+            .putString("widget_cache_${widgetId}_updated", updated)
+            .apply()
+    }
+
+    fun loadWidgetCache(widgetId: Int): WidgetCache? {
+        val name = prefs.getString("widget_cache_${widgetId}_name", null) ?: return null
+        return WidgetCache(
+            name = name,
+            queueNumber = prefs.getString("widget_cache_${widgetId}_queue", "") ?: "",
+            status = prefs.getString("widget_cache_${widgetId}_status", "") ?: "",
+            preview = prefs.getString("widget_cache_${widgetId}_preview", "") ?: "",
+            updated = prefs.getString("widget_cache_${widgetId}_updated", "") ?: ""
+        )
+    }
+
+    data class WidgetCache(
+        val name: String,
+        val queueNumber: String,
+        val status: String,
+        val preview: String,
+        val updated: String
+    )
 }
