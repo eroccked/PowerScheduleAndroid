@@ -2,6 +2,7 @@ package com.powerschedule.app.ui.schedule
 
 import android.app.Application
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.powerschedule.app.data.models.PowerQueue
 import com.powerschedule.app.data.models.ScheduleData
 import com.powerschedule.app.ui.components.*
 import com.powerschedule.app.ui.theme.*
@@ -40,6 +42,14 @@ fun ScheduleScreen(
     val queue by viewModel.queue.collectAsState()
     val notificationsEnabled by viewModel.notificationsEnabled.collectAsState()
     val autoUpdateEnabled by viewModel.autoUpdateEnabled.collectAsState()
+
+    val todaySchedule by viewModel.todaySchedule.collectAsState()
+    val tomorrowSchedule by viewModel.tomorrowSchedule.collectAsState()
+    val selectedDayIndex by viewModel.selectedDayIndex.collectAsState()
+    val dayLabels by viewModel.dayLabels.collectAsState()
+    val hasTwoDays by viewModel.hasTwoDays.collectAsState()
+
+    val currentSchedule = if (selectedDayIndex == 0) todaySchedule else tomorrowSchedule
 
     GradientBackground {
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
@@ -63,9 +73,33 @@ fun ScheduleScreen(
             when {
                 uiState.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { LoadingIndicator() }
                 uiState.errorMessage != null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { ErrorView(uiState.errorMessage!!, { viewModel.fetchSchedule() }) }
-                uiState.scheduleData != null && queue != null -> {
-                    ScheduleContent(queue!!, uiState.scheduleData!!, notificationsEnabled, autoUpdateEnabled,
-                        { viewModel.setNotificationsEnabled(it) }, { viewModel.setAutoUpdateEnabled(it) })
+                currentSchedule != null && queue != null -> {
+                    ScheduleContent(
+                        queue = queue!!,
+                        scheduleData = currentSchedule!!,
+                        notificationsEnabled = notificationsEnabled,
+                        autoUpdateEnabled = autoUpdateEnabled,
+                        onNotificationsChanged = { viewModel.setNotificationsEnabled(it) },
+                        onAutoUpdateChanged = { viewModel.setAutoUpdateEnabled(it) },
+                        hasTwoDays = hasTwoDays,
+                        selectedDayIndex = selectedDayIndex,
+                        dayLabels = dayLabels,
+                        onDaySelected = { viewModel.selectDay(it) }
+                    )
+                }
+                todaySchedule != null && queue != null -> {
+                    ScheduleContent(
+                        queue = queue!!,
+                        scheduleData = todaySchedule!!,
+                        notificationsEnabled = notificationsEnabled,
+                        autoUpdateEnabled = autoUpdateEnabled,
+                        onNotificationsChanged = { viewModel.setNotificationsEnabled(it) },
+                        onAutoUpdateChanged = { viewModel.setAutoUpdateEnabled(it) },
+                        hasTwoDays = false,
+                        selectedDayIndex = 0,
+                        dayLabels = dayLabels,
+                        onDaySelected = { }
+                    )
                 }
             }
         }
@@ -74,12 +108,16 @@ fun ScheduleScreen(
 
 @Composable
 private fun ScheduleContent(
-    queue: com.powerschedule.app.data.models.PowerQueue,
+    queue: PowerQueue,
     scheduleData: ScheduleData,
     notificationsEnabled: Boolean,
     autoUpdateEnabled: Boolean,
     onNotificationsChanged: (Boolean) -> Unit,
-    onAutoUpdateChanged: (Boolean) -> Unit
+    onAutoUpdateChanged: (Boolean) -> Unit,
+    hasTwoDays: Boolean,
+    selectedDayIndex: Int,
+    dayLabels: Pair<String, String>,
+    onDaySelected: (Int) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -125,6 +163,17 @@ private fun ScheduleContent(
                             colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = StatusGreen))
                     }
                 }
+            }
+        }
+
+        // Day Picker (якщо є два дні)
+        if (hasTwoDays) {
+            item {
+                DayPicker(
+                    selectedIndex = selectedDayIndex,
+                    labels = dayLabels,
+                    onDaySelected = onDaySelected
+                )
             }
         }
 
@@ -203,6 +252,59 @@ private fun ScheduleContent(
         }
 
         item { Spacer(Modifier.height(40.dp)) }
+    }
+}
+
+@Composable
+private fun DayPicker(
+    selectedIndex: Int,
+    labels: Pair<String, String>,
+    onDaySelected: (Int) -> Unit
+) {
+    AppCard {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            DayPickerButton(
+                text = labels.first,
+                isSelected = selectedIndex == 0,
+                onClick = { onDaySelected(0) },
+                modifier = Modifier.weight(1f)
+            )
+            DayPickerButton(
+                text = labels.second,
+                isSelected = selectedIndex == 1,
+                onClick = { onDaySelected(1) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun DayPickerButton(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (isSelected) StatusGreen else Color.Transparent)
+            .clickable { onClick() }
+            .padding(vertical = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            fontSize = 14.sp,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+            color = if (isSelected) Color.White else TextSecondary
+        )
     }
 }
 
