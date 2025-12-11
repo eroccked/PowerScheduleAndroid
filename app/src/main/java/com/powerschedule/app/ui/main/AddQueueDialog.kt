@@ -50,6 +50,7 @@ fun AddQueueDialog(
                 modifier = Modifier
                     .fillMaxSize()
                     .statusBarsPadding()
+                    .navigationBarsPadding()
             ) {
                 // Top Bar
                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
@@ -60,10 +61,10 @@ fun AddQueueDialog(
                     }
                 }
 
-                // Content
+                // Scrollable Content
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .weight(1f)
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 18.dp)
                 ) {
@@ -140,28 +141,29 @@ fun AddQueueDialog(
                         }
                     }
 
-                    Spacer(Modifier.weight(1f))
+                    Spacer(Modifier.height(16.dp))
+                }
 
-                    // Add Button
-                    Box(
+                // Add Button - завжди видима внизу
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 18.dp)
+                        .padding(bottom = 75.dp)
+                        .background(CardBackground, RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onAddQueue(name, queueNumber) }
+                ) {
+                    Text(
+                        "Додати чергу",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 18.dp)
-                            .background(CardBackground, RoundedCornerShape(12.dp))
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { onAddQueue(name, queueNumber) }
-                    ) {
-                        Text(
-                            "Додати чергу",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = TextPrimary,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 14.dp),
-                            textAlign = TextAlign.Center
-                        )
-                    }
+                            .padding(vertical = 14.dp),
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
         }
