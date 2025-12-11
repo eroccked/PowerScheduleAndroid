@@ -149,7 +149,7 @@ fun AddQueueDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 18.dp)
-                        .padding(bottom = 75.dp)
+                        .padding(bottom = 85.dp)
                         .background(CardBackground, RoundedCornerShape(12.dp))
                         .clip(RoundedCornerShape(12.dp))
                         .clickable { onAddQueue(name, queueNumber) }
