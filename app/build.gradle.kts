@@ -6,12 +6,12 @@ plugins {
 
 android {
     namespace = "com.powerschedule.app"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.powerschedule.app"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
 

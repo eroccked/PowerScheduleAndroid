@@ -100,10 +100,11 @@ class ScheduleViewModel(
         val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
         val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
 
-        var firstDaySchedule: ScheduleData? = null
-        var secondDaySchedule: ScheduleData? = null
-        var labels = Pair("Сьогодні", "Завтра")
+        var todayScheduleData: ScheduleData? = null
+        var tomorrowScheduleData: ScheduleData? = null
+        var yesterdayScheduleData: ScheduleData? = null
 
+        // Спочатку розсортуємо по датах
         for (schedule in schedules) {
             val eventDate = try {
                 dateFormatter.parse(schedule.eventDate)
@@ -123,41 +124,59 @@ class ScheduleViewModel(
                     tomorrow.get(Calendar.DAY_OF_YEAR) == eventCal.get(Calendar.DAY_OF_YEAR)
 
             when {
-                isYesterday -> {
-                    if (firstDaySchedule == null) {
-                        firstDaySchedule = schedule
-                        labels = Pair("Вчора", "Сьогодні")
-                    }
-                }
-                isToday -> {
-                    if (labels.first == "Вчора") {
-                        // Вчора вже є, сьогодні буде другим
-                        secondDaySchedule = schedule
-                    } else {
-                        // Сьогодні перший
-                        if (firstDaySchedule == null) {
-                            firstDaySchedule = schedule
-                            labels = Pair("Сьогодні", "Завтра")
-                        } else {
-                            secondDaySchedule = schedule
-                        }
-                    }
-                }
-                isTomorrow -> {
-                    if (firstDaySchedule != null) {
-                        secondDaySchedule = schedule
-                    } else {
-                        // Тільки завтра (рідкісний випадок)
-                        firstDaySchedule = schedule
-                        labels = Pair("Завтра", "")
-                    }
-                }
+                isToday -> todayScheduleData = schedule
+                isTomorrow -> tomorrowScheduleData = schedule
+                isYesterday -> yesterdayScheduleData = schedule
             }
         }
 
-        // Якщо нічого не знайшли - беремо перший з списку
-        if (firstDaySchedule == null && schedules.isNotEmpty()) {
-            firstDaySchedule = schedules.first()
+        // Визначаємо що показувати
+        val firstDaySchedule: ScheduleData?
+        val secondDaySchedule: ScheduleData?
+        val labels: Pair<String, String>
+
+        when {
+            // Є сьогодні і завтра
+            todayScheduleData != null && tomorrowScheduleData != null -> {
+                firstDaySchedule = todayScheduleData
+                secondDaySchedule = tomorrowScheduleData
+                labels = Pair("Сьогодні", "Завтра")
+            }
+            // Є тільки сьогодні
+            todayScheduleData != null -> {
+                firstDaySchedule = todayScheduleData
+                secondDaySchedule = null
+                labels = Pair("Сьогодні", "")
+            }
+            // Є тільки завтра
+            tomorrowScheduleData != null -> {
+                firstDaySchedule = tomorrowScheduleData
+                secondDaySchedule = null
+                labels = Pair("Завтра", "")
+            }
+            // Є вчора і сьогодні
+            yesterdayScheduleData != null && todayScheduleData != null -> {
+                firstDaySchedule = yesterdayScheduleData
+                secondDaySchedule = todayScheduleData
+                labels = Pair("Вчора", "Сьогодні")
+            }
+            // Є тільки вчора
+            yesterdayScheduleData != null -> {
+                firstDaySchedule = yesterdayScheduleData
+                secondDaySchedule = null
+                labels = Pair("Вчора", "")
+            }
+            // Нічого не знайшли - беремо перший з списку
+            schedules.isNotEmpty() -> {
+                firstDaySchedule = schedules.first()
+                secondDaySchedule = null
+                labels = Pair("Графік", "")
+            }
+            else -> {
+                firstDaySchedule = null
+                secondDaySchedule = null
+                labels = Pair("", "")
+            }
         }
 
         _todaySchedule.value = firstDaySchedule
