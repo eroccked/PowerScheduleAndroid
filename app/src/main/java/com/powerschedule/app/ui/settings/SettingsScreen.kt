@@ -36,6 +36,7 @@ fun SettingsScreen(
     val showDeleteAllDialog by viewModel.showDeleteAllDialog.collectAsState()
     val context = LocalContext.current
     var showIntervalPicker by remember { mutableStateOf(false) }
+    var isNavigating by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { viewModel.loadData() }
 
@@ -44,7 +45,14 @@ fun SettingsScreen(
             TopAppBar(
                 title = { },
                 actions = {
-                    TextButton(onClick = onNavigateBack) {
+                    TextButton(
+                        onClick = {
+                            if (!isNavigating) {
+                                isNavigating = true
+                                onNavigateBack()
+                            }
+                        }
+                    ) {
                         Text("Готово", color = TextPrimary, fontWeight = FontWeight.SemiBold)
                     }
                 },

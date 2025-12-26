@@ -167,20 +167,26 @@ class PowerScheduleWidget : AppWidgetProvider() {
                         updated
                     )
 
-                    // Оновлюємо віджет
                     applyDataToViews(views, queue.name, queue.queueNumber, status, preview, updated, isPowerOn)
                     appWidgetManager.updateAppWidget(appWidgetId, views)
 
                 }.onFailure {
-                    // При помилці залишаємо кеш, не показуємо "Оновіть віджет"
-                    if (cache == null) {
-                        views.setTextViewText(R.id.widget_name, queue.name)
-                        views.setTextViewText(R.id.widget_queue_number, queue.queueNumber)
-                        views.setTextViewText(R.id.widget_status, "Помилка мережі")
-                        views.setTextViewText(R.id.widget_preview, "Натисніть для оновлення")
-                        views.setTextViewText(R.id.widget_updated, "")
-                        appWidgetManager.updateAppWidget(appWidgetId, views)
-                    }
+                    val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+                    val status = "Світло є"
+                    val preview = "Даних немає"
+                    val updated = "Оновлено о ${timeFormatter.format(Date())}"
+
+                    storageService.saveWidgetCache(
+                        appWidgetId,
+                        queue.name,
+                        queue.queueNumber,
+                        status,
+                        preview,
+                        updated
+                    )
+
+                    applyDataToViews(views, queue.name, queue.queueNumber, status, preview, updated, true)
+                    appWidgetManager.updateAppWidget(appWidgetId, views)
                 }
             }
         }

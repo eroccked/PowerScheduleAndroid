@@ -90,7 +90,22 @@ class ScheduleViewModel(
                     _todaySchedule.value?.let { scheduleNotifications(it) }
                 }
             }.onFailure { error ->
-                _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = error.message)
+                val emptySchedule = ScheduleData(
+                    eventDate = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date()),
+                    createdAt = "",
+                    scheduleApprovedSince = "",
+                    shutdowns = emptyList()
+                )
+                _todaySchedule.value = emptySchedule
+                _tomorrowSchedule.value = null
+                _hasTwoDays.value = false
+                _dayLabels.value = Pair("Сьогодні", "")
+
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = null,
+                    scheduleData = emptySchedule
+                )
             }
         }
     }

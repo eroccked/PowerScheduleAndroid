@@ -62,17 +62,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun addQueue(name: String, queueNumber: String) {
-        if (name.isBlank()) {
-            showErrorAlert("❌ Введіть назву!")
-            return
-        }
-
         if (!isValidQueueFormat(queueNumber)) {
             showErrorAlert("❌ Невірний формат черги!")
             return
         }
 
-        val newQueue = PowerQueue(name = name, queueNumber = queueNumber)
+        val finalName = if (name.isBlank()) queueNumber else name
+
+        val newQueue = PowerQueue(name = finalName, queueNumber = queueNumber)
         storageService.addQueue(newQueue)
         loadQueues()
     }
@@ -192,8 +189,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }.onFailure {
                 updateQueueCardState(queue.id) {
                     it.copy(
-                        isPowerOn = false,
-                        schedulePreview = "Помилка завантаження",
+                        isPowerOn = true,
+                        schedulePreview = "Даних немає",
                         lastUpdated = timeFormatter.format(Date()),
                         isLoading = false
                     )
