@@ -166,6 +166,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 updateQueueCardState(queue.id) {
                     it.copy(
                         isPowerOn = isPowerOn,
+                        isDataAvailable = true,
                         schedulePreview = preview,
                         lastUpdated = timeFormatter.format(Date()),
                         isLoading = false,
@@ -190,7 +191,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 updateQueueCardState(queue.id) {
                     it.copy(
                         isPowerOn = true,
-                        schedulePreview = "Даних немає",
+                        isDataAvailable = false,
+                        schedulePreview = "Інформація відсутня",
                         lastUpdated = timeFormatter.format(Date()),
                         isLoading = false
                     )

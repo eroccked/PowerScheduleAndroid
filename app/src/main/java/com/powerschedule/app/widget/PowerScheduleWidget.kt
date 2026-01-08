@@ -55,7 +55,15 @@ class PowerScheduleWidget : AppWidgetProvider() {
             // 1. Спочатку показуємо кеш (якщо є)
             val cache = storageService.loadWidgetCache(appWidgetId)
             if (cache != null) {
-                applyDataToViews(views, cache.name, cache.queueNumber, cache.status, cache.preview, cache.updated, cache.status == "Світло є")
+                applyDataToViews(
+                    views,
+                    cache.name,
+                    cache.queueNumber,
+                    cache.status,
+                    cache.preview,
+                    cache.updated,
+                    cache.status == "Світло є"
+                )
                 appWidgetManager.updateAppWidget(appWidgetId, views)
             } else {
                 // Показуємо "Завантаження..." замість "Оновіть віджет"
@@ -104,7 +112,9 @@ class PowerScheduleWidget : AppWidgetProvider() {
                         val eventCal = Calendar.getInstance().apply { time = eventDate!! }
                         today.get(Calendar.YEAR) == eventCal.get(Calendar.YEAR) &&
                                 today.get(Calendar.DAY_OF_YEAR) == eventCal.get(Calendar.DAY_OF_YEAR)
-                    } catch (e: Exception) { true }
+                    } catch (e: Exception) {
+                        true
+                    }
 
                     val isPowerOn = if (isToday) {
                         !scheduleData.shutdowns.any { shutdown ->
@@ -134,9 +144,11 @@ class PowerScheduleWidget : AppWidgetProvider() {
                                 "Завтра о ${scheduleData.shutdowns.first().from}"
                             } else "Завтра відключень немає"
                         }
+
                         !isPowerOn -> {
                             val currentShutdown = scheduleData.shutdowns.firstOrNull { shutdown ->
-                                val fromParts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
+                                val fromParts =
+                                    shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
                                 val toParts = shutdown.to.split(":").mapNotNull { it.toIntOrNull() }
                                 if (fromParts.size == 2 && toParts.size == 2) {
                                     val fromMinutes = fromParts[0] * 60 + fromParts[1]
@@ -147,9 +159,11 @@ class PowerScheduleWidget : AppWidgetProvider() {
                             if (currentShutdown != null) "Увімкнуть о ${currentShutdown.to}"
                             else "Поточний стан"
                         }
+
                         futureShutdownsToday.isNotEmpty() -> {
                             "Відключення о ${futureShutdownsToday.first().from}"
                         }
+
                         scheduleData.shutdowns.isNotEmpty() -> "Сьогодні більше немає"
                         else -> "Відключень немає"
                     }
@@ -167,15 +181,24 @@ class PowerScheduleWidget : AppWidgetProvider() {
                         updated
                     )
 
-                    applyDataToViews(views, queue.name, queue.queueNumber, status, preview, updated, isPowerOn)
+                    applyDataToViews(
+                        views,
+                        queue.name,
+                        queue.queueNumber,
+                        status,
+                        preview,
+                        updated,
+                        isPowerOn
+                    )
                     appWidgetManager.updateAppWidget(appWidgetId, views)
 
                 }.onFailure {
                     val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
-                    val status = "Світло є"
-                    val preview = "Даних немає"
+                    val status = "Невідомо"
+                    val preview = "Інформація відсутня"
                     val updated = "Оновлено о ${timeFormatter.format(Date())}"
 
+                    // Зберігаємо в кеш
                     storageService.saveWidgetCache(
                         appWidgetId,
                         queue.name,
@@ -185,7 +208,15 @@ class PowerScheduleWidget : AppWidgetProvider() {
                         updated
                     )
 
-                    applyDataToViews(views, queue.name, queue.queueNumber, status, preview, updated, true)
+                    views.setTextViewText(R.id.widget_name, queue.name)
+                    views.setTextViewText(R.id.widget_queue_number, queue.queueNumber)
+                    views.setTextViewText(R.id.widget_status, status)
+                    views.setImageViewResource(
+                        R.id.widget_status_icon,
+                        R.drawable.ic_status_unknown
+                    )
+                    views.setTextViewText(R.id.widget_preview, preview)
+                    views.setTextViewText(R.id.widget_updated, updated)
                     appWidgetManager.updateAppWidget(appWidgetId, views)
                 }
             }
@@ -203,10 +234,14 @@ class PowerScheduleWidget : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_name, name)
             views.setTextViewText(R.id.widget_queue_number, queueNumber)
             views.setTextViewText(R.id.widget_status, status)
-            views.setImageViewResource(
-                R.id.widget_status_icon,
-                if (isPowerOn) R.drawable.ic_status_on else R.drawable.ic_status_off
-            )
+
+            val iconRes = when (status) {
+                "Невідомо" -> R.drawable.ic_status_unknown
+                "Світло є" -> R.drawable.ic_status_on
+                else -> R.drawable.ic_status_off
+            }
+            views.setImageViewResource(R.id.widget_status_icon, iconRes)
+
             views.setTextViewText(R.id.widget_preview, preview)
             views.setTextViewText(R.id.widget_updated, updated)
         }

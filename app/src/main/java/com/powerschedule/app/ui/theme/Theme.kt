@@ -18,6 +18,8 @@ val CardFooterBackground = Color(0xFFA8E6CF).copy(alpha = 0.5f)
 // Status Colors
 val StatusGreen = Color(0xFF4CAF50)
 val StatusRed = Color(0xFFF44336)
+
+val StatusYellow = Color(0xFFFFC107)
 val StatusRedLight = Color(0xFFFF5252)
 
 // Text Colors

@@ -267,10 +267,19 @@ private fun QueueCard(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        StatusIndicator(isPowerOn = state.isPowerOn)
+                        StatusIndicator(isPowerOn = state.isPowerOn, isDataAvailable = state.isDataAvailable)
                         Spacer(Modifier.width(10.dp))
                         Column {
-                            Text(if (state.isPowerOn) "Світло є" else "Відключення", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                            Text(
+                                when {
+                                    !state.isDataAvailable -> "Невідомо"
+                                    state.isPowerOn -> "Світло є"
+                                    else -> "Відключення"
+                                },
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextPrimary
+                            )
                             Text(state.schedulePreview, fontSize = 12.sp, color = TextSecondary)
                         }
                     }

@@ -119,12 +119,12 @@ data class ScheduleData(
 
 data class QueueCardState(
     val isPowerOn: Boolean = true,
+    val isDataAvailable: Boolean = true,
     val schedulePreview: String = "Завантаження...",
     val lastUpdated: String = "",
     val isLoading: Boolean = false,
     val scheduleData: ScheduleData? = null
 )
-
 
 data class ScheduleUiState(
     val isLoading: Boolean = false,

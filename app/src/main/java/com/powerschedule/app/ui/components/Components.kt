@@ -19,7 +19,7 @@ import com.powerschedule.app.ui.theme.*
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import com.powerschedule.app.R
-
+import androidx.compose.foundation.border
 @Composable
 fun GradientBackground(
     modifier: Modifier = Modifier,
@@ -57,21 +57,22 @@ fun AppCard(
 }
 
 @Composable
-fun StatusIndicator(
-    isPowerOn: Boolean,
-    modifier: Modifier = Modifier,
-    size: Dp = 28.dp,
-    strokeWidth: Dp = 3.5.dp
-) {
-    Box(modifier = modifier.size(size)) {
-        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-            drawCircle(
-                color = if (isPowerOn) StatusGreen else StatusRedLight,
-                radius = (size.toPx() - strokeWidth.toPx()) / 2,
-                style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth.toPx())
-            )
-        }
+fun StatusIndicator(isPowerOn: Boolean, isDataAvailable: Boolean = true) {
+    val color = when {
+        !isDataAvailable -> StatusYellow
+        isPowerOn -> StatusGreen
+        else -> StatusRed
     }
+
+    Box(
+        modifier = Modifier
+            .size(28.dp)
+            .border(
+                width = 3.dp,
+                color = color,
+                shape = CircleShape
+            )
+    )
 }
 
 @Composable
