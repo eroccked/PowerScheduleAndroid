@@ -100,21 +100,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val currentMinute = Calendar.getInstance().get(Calendar.MINUTE)
                 val currentTotalMinutes = currentHour * 60 + currentMinute
                 val isToday = isDateToday(scheduleData.eventDate)
+                val isTomorrow = isDateTomorrow(scheduleData.eventDate)
 
+                // Перевіряємо чи зараз відключення (з урахуванням переходу через північ)
                 val isPowerOn = if (isToday) {
                     !scheduleData.shutdowns.any { shutdown ->
-                        val fromParts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
-                        val toParts = shutdown.to.split(":").mapNotNull { it.toIntOrNull() }
-                        if (fromParts.size == 2 && toParts.size == 2) {
-                            val fromMinutes = fromParts[0] * 60 + fromParts[1]
-                            val toMinutes = toParts[0] * 60 + toParts[1]
-                            currentTotalMinutes >= fromMinutes && currentTotalMinutes < toMinutes
-                        } else false
+                        isCurrentlyInShutdown(shutdown, currentTotalMinutes)
                     }
                 } else {
                     true
                 }
 
+                // Майбутні відключення сьогодні
                 val futureShutdownsToday = if (isToday) {
                     scheduleData.shutdowns.filter { shutdown ->
                         val parts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
@@ -128,22 +125,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
 
                 val preview = when {
-                    !isToday -> {
+                    // Графік на завтра
+                    isTomorrow -> {
                         if (scheduleData.shutdowns.isNotEmpty()) {
-                            "Завтра відключення о ${scheduleData.shutdowns.first().from}"
+                            val firstShutdown = scheduleData.shutdowns.first()
+                            val fromParts = firstShutdown.from.split(":").mapNotNull { it.toIntOrNull() }
+
+                            // Якщо відключення о 00:00-02:59 і зараз вечір (після 20:00) - це "сьогодні вночі"
+                            if (fromParts.size == 2 && fromParts[0] < 3 && currentHour >= 20) {
+                                "Сьогодні вночі о ${firstShutdown.from}"
+                            } else {
+                                "Завтра відключення о ${firstShutdown.from}"
+                            }
                         } else {
                             "Завтра відключень немає"
                         }
                     }
+                    // Зараз відключення
                     !isPowerOn -> {
                         val currentShutdown = scheduleData.shutdowns.firstOrNull { shutdown ->
-                            val fromParts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
-                            val toParts = shutdown.to.split(":").mapNotNull { it.toIntOrNull() }
-                            if (fromParts.size == 2 && toParts.size == 2) {
-                                val fromMinutes = fromParts[0] * 60 + fromParts[1]
-                                val toMinutes = toParts[0] * 60 + toParts[1]
-                                currentTotalMinutes >= fromMinutes && currentTotalMinutes < toMinutes
-                            } else false
+                            isCurrentlyInShutdown(shutdown, currentTotalMinutes)
                         }
 
                         if (currentShutdown != null) {
@@ -152,12 +153,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             "Поточний стан невідомий"
                         }
                     }
+                    // Є майбутні відключення сьогодні
                     futureShutdownsToday.isNotEmpty() -> {
                         "Відключення о ${futureShutdownsToday.first().from}"
                     }
+                    // Всі відключення сьогодні минули
                     scheduleData.shutdowns.isNotEmpty() -> {
                         "Сьогодні відключень більше немає"
                     }
+                    // Відключень немає
                     else -> {
                         "Відключень немає"
                     }
@@ -201,6 +205,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /**
+     * Перевіряє чи поточний час потрапляє в період відключення
+     * Враховує перехід через північ (наприклад 23:00 - 01:00)
+     */
+    private fun isCurrentlyInShutdown(shutdown: com.powerschedule.app.data.models.Shutdown, currentTotalMinutes: Int): Boolean {
+        val fromParts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
+        val toParts = shutdown.to.split(":").mapNotNull { it.toIntOrNull() }
+
+        if (fromParts.size != 2 || toParts.size != 2) return false
+
+        val fromMinutes = fromParts[0] * 60 + fromParts[1]
+        val toMinutes = toParts[0] * 60 + toParts[1]
+
+        return if (fromMinutes < toMinutes) {
+            // Звичайний випадок: 08:00 - 12:00
+            currentTotalMinutes >= fromMinutes && currentTotalMinutes < toMinutes
+        } else {
+            // Перехід через північ: 23:00 - 01:00
+            currentTotalMinutes >= fromMinutes || currentTotalMinutes < toMinutes
+        }
+    }
+
     private fun startBackgroundUpdates() {
         val interval = storageService.loadUpdateInterval()
         BackgroundUpdateWorker.schedule(getApplication(), interval)
@@ -225,6 +251,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             today.get(Calendar.YEAR) == eventCal.get(Calendar.YEAR) &&
                     today.get(Calendar.DAY_OF_YEAR) == eventCal.get(Calendar.DAY_OF_YEAR)
         } catch (e: Exception) { true }
+    }
+
+    private fun isDateTomorrow(dateString: String): Boolean {
+        return try {
+            val eventDate = dateFormatter.parse(dateString) ?: return false
+            val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
+            val eventCal = Calendar.getInstance().apply { time = eventDate }
+            tomorrow.get(Calendar.YEAR) == eventCal.get(Calendar.YEAR) &&
+                    tomorrow.get(Calendar.DAY_OF_YEAR) == eventCal.get(Calendar.DAY_OF_YEAR)
+        } catch (e: Exception) { false }
     }
 
     private fun showErrorAlert(message: String) {
