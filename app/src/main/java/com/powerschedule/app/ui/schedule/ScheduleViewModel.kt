@@ -247,7 +247,8 @@ class ScheduleViewModel(
             shutdowns = scheduleData.shutdowns,
             queueName = currentQueue.name,
             queueId = currentQueue.id,
-            minutesBefore = minutesBefore
+            minutesBefore = minutesBefore,
+            eventDate = scheduleData.eventDate
         )
     }
 }

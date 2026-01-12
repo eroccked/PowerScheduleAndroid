@@ -15,6 +15,8 @@ import androidx.work.*
 import com.powerschedule.app.MainActivity
 import com.powerschedule.app.R
 import com.powerschedule.app.data.models.Shutdown
+import java.text.SimpleDateFormat
+import java.util.*
 import java.util.concurrent.TimeUnit
 
 class NotificationService private constructor(private val context: Context) {
@@ -35,6 +37,7 @@ class NotificationService private constructor(private val context: Context) {
 
     private val notificationManager = NotificationManagerCompat.from(context)
     private val workManager = WorkManager.getInstance(context)
+    private val dateFormatter = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
 
     init {
         createNotificationChannel()
@@ -64,12 +67,23 @@ class NotificationService private constructor(private val context: Context) {
         shutdowns: List<Shutdown>,
         queueName: String,
         queueId: String,
-        minutesBefore: Int
+        minutesBefore: Int,
+        eventDate: String? = null
     ) {
         cancelNotifications(queueId)
 
+        // Парсимо дату графіка
+        val scheduleDate = if (eventDate != null) {
+            try {
+                dateFormatter.parse(eventDate)
+            } catch (e: Exception) {
+                null
+            }
+        } else null
+
         shutdowns.forEach { shutdown ->
-            val notificationTime = shutdown.getNotificationTimeMillis(minutesBefore)
+            val notificationTime = getNotificationTimeForShutdown(shutdown, minutesBefore, scheduleDate)
+
             if (notificationTime != null && notificationTime > System.currentTimeMillis()) {
                 val delay = notificationTime - System.currentTimeMillis()
 
@@ -89,6 +103,30 @@ class NotificationService private constructor(private val context: Context) {
                 workManager.enqueue(workRequest)
             }
         }
+    }
+
+    private fun getNotificationTimeForShutdown(
+        shutdown: Shutdown,
+        minutesBefore: Int,
+        scheduleDate: Date?
+    ): Long? {
+        val parts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
+        if (parts.size != 2) return null
+
+        val calendar = Calendar.getInstance()
+
+        // Якщо є дата графіка - використовуємо її
+        if (scheduleDate != null) {
+            calendar.time = scheduleDate
+        }
+
+        calendar.set(Calendar.HOUR_OF_DAY, parts[0])
+        calendar.set(Calendar.MINUTE, parts[1])
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        calendar.add(Calendar.MINUTE, -minutesBefore)
+
+        return calendar.timeInMillis
     }
 
     fun showScheduleUpdateNotification(queueName: String) {

@@ -184,7 +184,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         shutdowns = scheduleData.shutdowns,
                         queueName = queue.name,
                         queueId = queue.id,
-                        minutesBefore = minutesBefore
+                        minutesBefore = minutesBefore,
+                        eventDate = scheduleData.eventDate
                     )
                 }
 
