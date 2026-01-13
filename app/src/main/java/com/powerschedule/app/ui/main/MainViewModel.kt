@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.powerschedule.app.data.api.APIService
 import com.powerschedule.app.data.models.PowerQueue
 import com.powerschedule.app.data.models.QueueCardState
+import com.powerschedule.app.data.models.Shutdown
 import com.powerschedule.app.data.notification.BackgroundUpdateWorker
 import com.powerschedule.app.data.notification.NotificationService
 import com.powerschedule.app.data.storage.StorageService
@@ -111,14 +112,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     true
                 }
 
-                // Майбутні відключення сьогодні
+                // Майбутні відключення сьогодні (які ще не почались)
                 val futureShutdownsToday = if (isToday) {
                     scheduleData.shutdowns.filter { shutdown ->
-                        val parts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
-                        if (parts.size == 2) {
-                            val shutdownMinutes = parts[0] * 60 + parts[1]
-                            shutdownMinutes > currentTotalMinutes
-                        } else false
+                        isFutureShutdown(shutdown, currentTotalMinutes)
                     }
                 } else {
                     emptyList()
@@ -207,10 +204,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * Перевіряє чи поточний час потрапляє в період відключення
-     * Враховує перехід через північ (наприклад 23:00 - 01:00)
+     * Перевіряє чи відключення ще не почалось (в майбутньому)
      */
-    private fun isCurrentlyInShutdown(shutdown: com.powerschedule.app.data.models.Shutdown, currentTotalMinutes: Int): Boolean {
+    private fun isFutureShutdown(shutdown: Shutdown, currentTotalMinutes: Int): Boolean {
+        val fromParts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
+        if (fromParts.size != 2) return false
+
+        val fromMinutes = fromParts[0] * 60 + fromParts[1]
+
+        // Відключення в майбутньому, якщо:
+        // 1. Час початку більший за поточний
+        // 2. І ми зараз НЕ в цьому відключенні
+        return fromMinutes > currentTotalMinutes && !isCurrentlyInShutdown(shutdown, currentTotalMinutes)
+    }
+
+    /**
+     * Перевіряє чи поточний час потрапляє в період відключення
+     * Враховує перехід через північ (наприклад 23:00 - 01:00 або 20:30 - 00:00)
+     */
+    private fun isCurrentlyInShutdown(shutdown: Shutdown, currentTotalMinutes: Int): Boolean {
         val fromParts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
         val toParts = shutdown.to.split(":").mapNotNull { it.toIntOrNull() }
 
@@ -219,11 +231,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val fromMinutes = fromParts[0] * 60 + fromParts[1]
         val toMinutes = toParts[0] * 60 + toParts[1]
 
-        return if (fromMinutes < toMinutes) {
+        return if (toMinutes > fromMinutes) {
             // Звичайний випадок: 08:00 - 12:00
             currentTotalMinutes >= fromMinutes && currentTotalMinutes < toMinutes
         } else {
-            // Перехід через північ: 23:00 - 01:00
+            // Перехід через північ: 20:30 - 00:00 або 23:00 - 01:00
             currentTotalMinutes >= fromMinutes || currentTotalMinutes < toMinutes
         }
     }
