@@ -9,6 +9,7 @@ import android.widget.RemoteViews
 import com.powerschedule.app.MainActivity
 import com.powerschedule.app.R
 import com.powerschedule.app.data.api.APIService
+import com.powerschedule.app.data.models.Shutdown
 import com.powerschedule.app.data.storage.StorageService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -118,43 +119,34 @@ class PowerScheduleWidget : AppWidgetProvider() {
 
                     val isPowerOn = if (isToday) {
                         !scheduleData.shutdowns.any { shutdown ->
-                            val fromParts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
-                            val toParts = shutdown.to.split(":").mapNotNull { it.toIntOrNull() }
-                            if (fromParts.size == 2 && toParts.size == 2) {
-                                val fromMinutes = fromParts[0] * 60 + fromParts[1]
-                                val toMinutes = toParts[0] * 60 + toParts[1]
-                                currentTotalMinutes >= fromMinutes && currentTotalMinutes < toMinutes
-                            } else false
+                            isCurrentlyInShutdown(shutdown, currentTotalMinutes)
                         }
                     } else true
 
                     val futureShutdownsToday = if (isToday) {
                         scheduleData.shutdowns.filter { shutdown ->
-                            val parts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
-                            if (parts.size == 2) {
-                                val shutdownMinutes = parts[0] * 60 + parts[1]
-                                shutdownMinutes > currentTotalMinutes
-                            } else false
+                            isFutureShutdown(shutdown, currentTotalMinutes)
                         }
                     } else emptyList()
 
                     val preview = when {
                         !isToday -> {
                             if (scheduleData.shutdowns.isNotEmpty()) {
-                                "Завтра о ${scheduleData.shutdowns.first().from}"
+                                val firstShutdown = scheduleData.shutdowns.first()
+                                val fromParts = firstShutdown.from.split(":").mapNotNull { it.toIntOrNull() }
+
+                                // Якщо відключення о 00:00-02:59 і зараз вечір - "сьогодні вночі"
+                                if (fromParts.size == 2 && fromParts[0] < 3 && currentHour >= 20) {
+                                    "Вночі о ${firstShutdown.from}"
+                                } else {
+                                    "Завтра о ${firstShutdown.from}"
+                                }
                             } else "Завтра відключень немає"
                         }
 
                         !isPowerOn -> {
                             val currentShutdown = scheduleData.shutdowns.firstOrNull { shutdown ->
-                                val fromParts =
-                                    shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
-                                val toParts = shutdown.to.split(":").mapNotNull { it.toIntOrNull() }
-                                if (fromParts.size == 2 && toParts.size == 2) {
-                                    val fromMinutes = fromParts[0] * 60 + fromParts[1]
-                                    val toMinutes = toParts[0] * 60 + toParts[1]
-                                    currentTotalMinutes >= fromMinutes && currentTotalMinutes < toMinutes
-                                } else false
+                                isCurrentlyInShutdown(shutdown, currentTotalMinutes)
                             }
                             if (currentShutdown != null) "Увімкнуть о ${currentShutdown.to}"
                             else "Поточний стан"
@@ -219,6 +211,39 @@ class PowerScheduleWidget : AppWidgetProvider() {
                     views.setTextViewText(R.id.widget_updated, updated)
                     appWidgetManager.updateAppWidget(appWidgetId, views)
                 }
+            }
+        }
+
+        /**
+         * Перевіряє чи відключення ще не почалось
+         */
+        private fun isFutureShutdown(shutdown: Shutdown, currentTotalMinutes: Int): Boolean {
+            val fromParts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
+            if (fromParts.size != 2) return false
+
+            val fromMinutes = fromParts[0] * 60 + fromParts[1]
+
+            return fromMinutes > currentTotalMinutes && !isCurrentlyInShutdown(shutdown, currentTotalMinutes)
+        }
+
+        /**
+         * Перевіряє чи зараз відключення (з урахуванням переходу через північ)
+         */
+        private fun isCurrentlyInShutdown(shutdown: Shutdown, currentTotalMinutes: Int): Boolean {
+            val fromParts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
+            val toParts = shutdown.to.split(":").mapNotNull { it.toIntOrNull() }
+
+            if (fromParts.size != 2 || toParts.size != 2) return false
+
+            val fromMinutes = fromParts[0] * 60 + fromParts[1]
+            val toMinutes = toParts[0] * 60 + toParts[1]
+
+            return if (toMinutes > fromMinutes) {
+                // Звичайний випадок: 08:00 - 12:00
+                currentTotalMinutes >= fromMinutes && currentTotalMinutes < toMinutes
+            } else {
+                // Перехід через північ: 20:30 - 00:00 або 23:00 - 01:00
+                currentTotalMinutes >= fromMinutes || currentTotalMinutes < toMinutes
             }
         }
 
