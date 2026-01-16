@@ -123,7 +123,8 @@ data class QueueCardState(
     val schedulePreview: String = "Завантаження...",
     val lastUpdated: String = "",
     val isLoading: Boolean = false,
-    val scheduleData: ScheduleData? = null
+    val scheduleData: ScheduleData? = null,
+    val isFromCache: Boolean = false
 )
 
 data class ScheduleUiState(

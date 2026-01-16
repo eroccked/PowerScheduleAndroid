@@ -41,15 +41,12 @@ fun GradientBackground(
 fun AppCard(
     modifier: Modifier = Modifier,
     cornerRadius: Dp = 14.dp,
-    content: @Composable ColumnScope.() -> Unit
+    content: @Composable () -> Unit
 ) {
-    Column(
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(
-                color = CardBackground,
-                shape = RoundedCornerShape(cornerRadius)
-            )
+            .background(CardBackground, RoundedCornerShape(cornerRadius))
             .clip(RoundedCornerShape(cornerRadius))
     ) {
         content()

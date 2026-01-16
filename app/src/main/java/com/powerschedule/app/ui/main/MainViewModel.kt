@@ -171,7 +171,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         schedulePreview = preview,
                         lastUpdated = timeFormatter.format(Date()),
                         isLoading = false,
-                        scheduleData = scheduleData
+                        scheduleData = scheduleData,
+                        isFromCache = false
                     )
                 }
 
@@ -186,23 +187,94 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     )
                 }
 
+                // Зберігаємо в кеш
                 val jsonString = json.encodeToString(scheduleData.shutdowns)
                 storageService.saveScheduleJSON(jsonString, queue.id)
+                storageService.saveScheduleCache(queue.id, scheduleData.eventDate, jsonString)
 
             }.onFailure {
-                updateQueueCardState(queue.id) {
-                    it.copy(
-                        isPowerOn = true,
-                        isDataAvailable = false,
-                        schedulePreview = "Інформація відсутня",
-                        lastUpdated = timeFormatter.format(Date()),
-                        isLoading = false
-                    )
+                // Спробуємо завантажити з кешу
+                val cache = storageService.loadScheduleCache(queue.id)
+
+                if (cache != null && isDateToday(cache.eventDate)) {
+                    // Є кеш на сьогодні - показуємо його
+                    try {
+                        val shutdowns: List<com.powerschedule.app.data.models.Shutdown> =
+                            json.decodeFromString(cache.shutdownsJson)
+
+                        val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+                        val currentMinute = Calendar.getInstance().get(Calendar.MINUTE)
+                        val currentTotalMinutes = currentHour * 60 + currentMinute
+
+                        val isPowerOn = !shutdowns.any { shutdown ->
+                            isCurrentlyInShutdown(shutdown, currentTotalMinutes)
+                        }
+
+                        val futureShutdowns = shutdowns.filter { shutdown ->
+                            isFutureShutdown(shutdown, currentTotalMinutes)
+                        }
+
+                        val preview = when {
+                            !isPowerOn -> {
+                                val currentShutdown = shutdowns.firstOrNull { shutdown ->
+                                    isCurrentlyInShutdown(shutdown, currentTotalMinutes)
+                                }
+                                if (currentShutdown != null) "Увімкнуть о ${currentShutdown.to}"
+                                else "Немає з'єднання"
+                            }
+                            futureShutdowns.isNotEmpty() -> {
+                                "Відключення о ${futureShutdowns.first().from}"
+                            }
+                            shutdowns.isNotEmpty() -> {
+                                "Сьогодні відключень більше немає"
+                            }
+                            else -> {
+                                "Відключень немає"
+                            }
+                        }
+
+                        val scheduleData = com.powerschedule.app.data.models.ScheduleData(
+                            eventDate = cache.eventDate,
+                            createdAt = "",
+                            scheduleApprovedSince = "",
+                            shutdowns = shutdowns
+                        )
+
+                        updateQueueCardState(queue.id) {
+                            it.copy(
+                                isPowerOn = isPowerOn,
+                                isDataAvailable = true,
+                                schedulePreview = preview,
+                                lastUpdated = "⚠️ Офлайн",
+                                isLoading = false,
+                                scheduleData = scheduleData,
+                                isFromCache = true
+                            )
+                        }
+                    } catch (e: Exception) {
+                        // Не вдалося розпарсити кеш
+                        showNoConnectionState(queue.id)
+                    }
+                } else {
+                    // Кешу немає або він застарілий
+                    showNoConnectionState(queue.id)
                 }
             }
         }
     }
 
+    private fun showNoConnectionState(queueId: String) {
+        updateQueueCardState(queueId) {
+            it.copy(
+                isPowerOn = true,
+                isDataAvailable = false,
+                schedulePreview = "Немає з'єднання",
+                lastUpdated = timeFormatter.format(Date()),
+                isLoading = false,
+                isFromCache = false
+            )
+        }
+    }
     /**
      * Перевіряє чи відключення ще не почалось (в майбутньому)
      */

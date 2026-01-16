@@ -128,4 +128,31 @@ class StorageService private constructor(context: Context) {
         val preview: String,
         val updated: String
     )
+
+    // Кеш графіка для черги
+    fun saveScheduleCache(queueId: String, eventDate: String, shutdownsJson: String) {
+        prefs.edit()
+            .putString("schedule_cache_${queueId}_date", eventDate)
+            .putString("schedule_cache_${queueId}_shutdowns", shutdownsJson)
+            .putLong("schedule_cache_${queueId}_timestamp", System.currentTimeMillis())
+            .apply()
+    }
+
+    fun loadScheduleCache(queueId: String): ScheduleCache? {
+        val eventDate = prefs.getString("schedule_cache_${queueId}_date", null) ?: return null
+        val shutdownsJson = prefs.getString("schedule_cache_${queueId}_shutdowns", null) ?: return null
+        val timestamp = prefs.getLong("schedule_cache_${queueId}_timestamp", 0)
+
+        return ScheduleCache(
+            eventDate = eventDate,
+            shutdownsJson = shutdownsJson,
+            timestamp = timestamp
+        )
+    }
+
+    data class ScheduleCache(
+        val eventDate: String,
+        val shutdownsJson: String,
+        val timestamp: Long
+    )
 }
