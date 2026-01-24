@@ -90,23 +90,30 @@ data class ScheduleData(
                 if (fromParts.size != 2 || toParts.size != 2) continue
 
                 val fromHour = fromParts[0]
+                val fromMinute = fromParts[1]
                 val toHour = toParts[0]
+                val toMinute = toParts[1]
 
-                if (fromHour < toHour) {
-                    // Звичайний випадок
-                    for (hour in fromHour until toHour) {
-                        timeline[hour] = false // false = power OFF
+                val fromTotal = fromHour * 60 + fromMinute
+                val toTotal = toHour * 60 + toMinute
+
+                // Визначаємо які години зачіпає відключення
+                for (hour in 0 until 24) {
+                    val hourStart = hour * 60
+                    val hourEnd = (hour + 1) * 60
+
+                    val isAffected = if (toTotal > fromTotal) {
+                        // Звичайний випадок: відключення в межах доби
+                        fromTotal < hourEnd && toTotal > hourStart
+                    } else if (toTotal < fromTotal) {
+                        // Перехід через північ
+                        fromTotal < hourEnd || toTotal > hourStart
+                    } else {
+                        // fromTotal == toTotal - немає відключення
+                        false
                     }
-                } else {
-                    // ВИПРАВЛЕННЯ: Перехід через північ (наприклад, 23:00 до 01:00)
 
-                    // 1. Години до кінця доби (наприклад, 23 до 24)
-                    for (hour in fromHour until 24) {
-                        timeline[hour] = false
-                    }
-
-                    // 2. Години після півночі (наприклад, 0 до 1)
-                    for (hour in 0 until toHour) {
+                    if (isAffected) {
                         timeline[hour] = false
                     }
                 }

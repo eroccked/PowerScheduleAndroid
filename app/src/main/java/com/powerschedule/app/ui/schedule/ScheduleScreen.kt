@@ -126,6 +126,68 @@ fun ScheduleScreen(
         )
     }
 }
+
+// Data class для статусу години
+private data class HourStatus(
+    val isShutdown: Boolean,
+    val isShutdownStart: Boolean,
+    val durationMinutes: Int
+)
+
+// Функція для створення карти статусів годин
+private fun createHourlyStatusMap(shutdowns: List<Shutdown>): Map<Int, HourStatus> {
+    val statusMap = mutableMapOf<Int, HourStatus>()
+
+    shutdowns.forEach { shutdown ->
+        val fromParts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
+        val toParts = shutdown.to.split(":").mapNotNull { it.toIntOrNull() }
+
+        if (fromParts.size != 2 || toParts.size != 2) return@forEach
+
+        val startHour = fromParts[0]
+        val startMinute = fromParts[1]
+        val endHour = toParts[0]
+        val endMinute = toParts[1]
+
+        val fromTotal = startHour * 60 + startMinute
+        val toTotal = endHour * 60 + endMinute
+
+        // Розрахунок тривалості в хвилинах
+        val durationMinutes = if (toTotal > fromTotal) {
+            toTotal - fromTotal
+        } else if (toTotal < fromTotal) {
+            // Перехід через північ
+            (24 * 60 - fromTotal) + toTotal
+        } else {
+            return@forEach // 0 хвилин - пропускаємо
+        }
+
+        // Визначаємо які години зачіпає відключення
+        for (hour in 0 until 24) {
+            val hourStart = hour * 60
+            val hourEnd = (hour + 1) * 60
+
+            val isAffected = if (toTotal > fromTotal) {
+                // Звичайний випадок
+                fromTotal < hourEnd && toTotal > hourStart
+            } else {
+                // Перехід через північ
+                fromTotal < hourEnd || toTotal > hourStart
+            }
+
+            if (isAffected) {
+                statusMap[hour] = HourStatus(
+                    isShutdown = true,
+                    isShutdownStart = (hour == startHour),
+                    durationMinutes = durationMinutes
+                )
+            }
+        }
+    }
+
+    return statusMap
+}
+
 @Composable
 private fun DetailedTimelineDialog(
     queue: PowerQueue,
@@ -302,6 +364,14 @@ private fun DetailedTimelineDialog(
 
                                         // Мітка початку відключення
                                         if (hourStatus != null && hourStatus.isShutdownStart) {
+                                            val hours = hourStatus.durationMinutes / 60
+                                            val minutes = hourStatus.durationMinutes % 60
+                                            val durationText = when {
+                                                hours > 0 && minutes > 0 -> "$hours год $minutes хв"
+                                                hours > 0 -> "$hours год"
+                                                else -> "$minutes хв"
+                                            }
+
                                             Row(
                                                 modifier = Modifier
                                                     .padding(top = 8.dp, end = 8.dp)
@@ -316,7 +386,7 @@ private fun DetailedTimelineDialog(
                                                 )
                                                 Spacer(Modifier.width(8.dp))
                                                 Text(
-                                                    "${hourStatus.totalDuration} год",
+                                                    durationText,
                                                     fontSize = 13.sp,
                                                     fontWeight = FontWeight.SemiBold,
                                                     color = StatusRedLight
@@ -393,59 +463,6 @@ private fun DetailedTimelineDialog(
                 }
             }
         }
-    }
-}
-
-// Нова data class для статусу години
-private data class HourStatus(
-    val isShutdown: Boolean,
-    val isShutdownStart: Boolean,
-    val totalDuration: Int
-)
-
-// Нова функція для створення карти статусів годин
-private fun createHourlyStatusMap(shutdowns: List<Shutdown>): Map<Int, HourStatus> {
-    val statusMap = mutableMapOf<Int, HourStatus>()
-
-    shutdowns.forEach { shutdown ->
-        val fromParts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
-        val toParts = shutdown.to.split(":").mapNotNull { it.toIntOrNull() }
-
-        if (fromParts.isEmpty() || toParts.isEmpty()) return@forEach
-
-        val startHour = fromParts[0]
-        val endHour = if (toParts[0] == 0) 24 else toParts[0]
-
-        // Розрахунок тривалості
-        val duration = if (endHour > startHour) {
-            endHour - startHour
-        } else {
-            24 - startHour + endHour
-        }
-
-        // Помічаємо всі години в діапазоні відключення
-        var currentHour = startHour
-        var remainingHours = duration
-
-        while (remainingHours > 0) {
-            val hour = currentHour % 24
-            statusMap[hour] = HourStatus(
-                isShutdown = true,
-                isShutdownStart = (currentHour == startHour),
-                totalDuration = duration
-            )
-            currentHour++
-            remainingHours--
-        }
-    }
-
-    return statusMap
-}
-
-private fun findShutdownForHour(shutdowns: List<Shutdown>, hour: Int): Shutdown? {
-    return shutdowns.firstOrNull { shutdown ->
-        val startHour = shutdown.from.split(":").getOrNull(0)?.toIntOrNull() ?: return@firstOrNull false
-        startHour == hour
     }
 }
 
