@@ -128,9 +128,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             val firstShutdown = scheduleData.shutdowns.first()
                             val fromParts = firstShutdown.from.split(":").mapNotNull { it.toIntOrNull() }
 
-                            // Якщо відключення о 00:00-02:59 і зараз вечір (після 20:00) - це "сьогодні вночі"
-                            if (fromParts.size == 2 && fromParts[0] < 3 && currentHour >= 20) {
-                                "Сьогодні вночі о ${firstShutdown.from}"
+                            if (fromParts.size == 2) {
+                                val shutdownHour = fromParts[0]
+
+                                when {
+                                    // Відключення о 00:00-02:59 і зараз вечір (після 20:00) - "сьогодні вночі"
+                                    shutdownHour < 3 && currentHour >= 20 -> {
+                                        "Сьогодні вночі о ${firstShutdown.from}"
+                                    }
+                                    // Відключення о 20:00-23:59 - це сьогодні ввечері, не завтра!
+                                    shutdownHour >= 20 -> {
+                                        "Сьогодні о ${firstShutdown.from}"
+                                    }
+                                    // Звичайний випадок - завтра
+                                    else -> {
+                                        "Завтра відключення о ${firstShutdown.from}"
+                                    }
+                                }
                             } else {
                                 "Завтра відключення о ${firstShutdown.from}"
                             }

@@ -3,6 +3,7 @@ package com.powerschedule.app.widget
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
@@ -19,24 +20,9 @@ import java.util.*
 
 class PowerScheduleWidget : AppWidgetProvider() {
 
-    override fun onUpdate(
-        context: Context,
-        appWidgetManager: AppWidgetManager,
-        appWidgetIds: IntArray
-    ) {
-        for (appWidgetId in appWidgetIds) {
-            updateAppWidget(context, appWidgetManager, appWidgetId)
-        }
-    }
-
-    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
-        val storageService = StorageService.getInstance(context)
-        for (appWidgetId in appWidgetIds) {
-            storageService.removeWidgetQueueId(appWidgetId)
-        }
-    }
-
     companion object {
+        const val ACTION_REFRESH = "com.powerschedule.app.REFRESH_WIDGET"
+
         fun updateAppWidget(
             context: Context,
             appWidgetManager: AppWidgetManager,
@@ -67,7 +53,6 @@ class PowerScheduleWidget : AppWidgetProvider() {
                 )
                 appWidgetManager.updateAppWidget(appWidgetId, views)
             } else {
-                // Показуємо "Завантаження..." замість "Оновіть віджет"
                 views.setTextViewText(R.id.widget_name, "Завантаження...")
                 views.setTextViewText(R.id.widget_queue_number, "")
                 views.setTextViewText(R.id.widget_status, "")
@@ -135,9 +120,23 @@ class PowerScheduleWidget : AppWidgetProvider() {
                                 val firstShutdown = scheduleData.shutdowns.first()
                                 val fromParts = firstShutdown.from.split(":").mapNotNull { it.toIntOrNull() }
 
-                                // Якщо відключення о 00:00-02:59 і зараз вечір - "сьогодні вночі"
-                                if (fromParts.size == 2 && fromParts[0] < 3 && currentHour >= 20) {
-                                    "Вночі о ${firstShutdown.from}"
+                                if (fromParts.size == 2) {
+                                    val shutdownHour = fromParts[0]
+
+                                    when {
+                                        // Відключення о 00:00-02:59 і зараз вечір - "вночі"
+                                        shutdownHour < 3 && currentHour >= 20 -> {
+                                            "Вночі о ${firstShutdown.from}"
+                                        }
+                                        // Відключення о 20:00-23:59 - це сьогодні!
+                                        shutdownHour >= 20 -> {
+                                            "Сьогодні о ${firstShutdown.from}"
+                                        }
+                                        // Звичайний випадок
+                                        else -> {
+                                            "Завтра о ${firstShutdown.from}"
+                                        }
+                                    }
                                 } else {
                                     "Завтра о ${firstShutdown.from}"
                                 }
@@ -163,7 +162,6 @@ class PowerScheduleWidget : AppWidgetProvider() {
                     val status = if (isPowerOn) "Світло є" else "Відключення"
                     val updated = "Оновлено о ${timeFormatter.format(Date())}"
 
-                    // Зберігаємо в кеш
                     storageService.saveWidgetCache(
                         appWidgetId,
                         queue.name,
@@ -185,38 +183,36 @@ class PowerScheduleWidget : AppWidgetProvider() {
                     appWidgetManager.updateAppWidget(appWidgetId, views)
 
                 }.onFailure {
-                    val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
-                    val status = "Невідомо"
-                    val preview = "Інформація відсутня"
-                    val updated = "Оновлено о ${timeFormatter.format(Date())}"
+                    // При помилці показуємо кеш якщо є, інакше "Невідомо"
+                    val cachedData = storageService.loadWidgetCache(appWidgetId)
+                    if (cachedData != null) {
+                        // Оновлюємо тільки час
+                        val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+                        val updated = "⚠️ ${timeFormatter.format(Date())}"
 
-                    // Зберігаємо в кеш
-                    storageService.saveWidgetCache(
-                        appWidgetId,
-                        queue.name,
-                        queue.queueNumber,
-                        status,
-                        preview,
-                        updated
-                    )
-
-                    views.setTextViewText(R.id.widget_name, queue.name)
-                    views.setTextViewText(R.id.widget_queue_number, queue.queueNumber)
-                    views.setTextViewText(R.id.widget_status, status)
-                    views.setImageViewResource(
-                        R.id.widget_status_icon,
-                        R.drawable.ic_status_unknown
-                    )
-                    views.setTextViewText(R.id.widget_preview, preview)
-                    views.setTextViewText(R.id.widget_updated, updated)
+                        applyDataToViews(
+                            views,
+                            cachedData.name,
+                            cachedData.queueNumber,
+                            cachedData.status,
+                            cachedData.preview,
+                            updated,
+                            cachedData.status == "Світло є"
+                        )
+                    } else {
+                        val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+                        views.setTextViewText(R.id.widget_name, queue.name)
+                        views.setTextViewText(R.id.widget_queue_number, queue.queueNumber)
+                        views.setTextViewText(R.id.widget_status, "Невідомо")
+                        views.setImageViewResource(R.id.widget_status_icon, R.drawable.ic_status_unknown)
+                        views.setTextViewText(R.id.widget_preview, "Немає з'єднання")
+                        views.setTextViewText(R.id.widget_updated, timeFormatter.format(Date()))
+                    }
                     appWidgetManager.updateAppWidget(appWidgetId, views)
                 }
             }
         }
 
-        /**
-         * Перевіряє чи відключення ще не почалось
-         */
         private fun isFutureShutdown(shutdown: Shutdown, currentTotalMinutes: Int): Boolean {
             val fromParts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
             if (fromParts.size != 2) return false
@@ -226,9 +222,6 @@ class PowerScheduleWidget : AppWidgetProvider() {
             return fromMinutes > currentTotalMinutes && !isCurrentlyInShutdown(shutdown, currentTotalMinutes)
         }
 
-        /**
-         * Перевіряє чи зараз відключення (з урахуванням переходу через північ)
-         */
         private fun isCurrentlyInShutdown(shutdown: Shutdown, currentTotalMinutes: Int): Boolean {
             val fromParts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
             val toParts = shutdown.to.split(":").mapNotNull { it.toIntOrNull() }
@@ -239,10 +232,8 @@ class PowerScheduleWidget : AppWidgetProvider() {
             val toMinutes = toParts[0] * 60 + toParts[1]
 
             return if (toMinutes > fromMinutes) {
-                // Звичайний випадок: 08:00 - 12:00
                 currentTotalMinutes >= fromMinutes && currentTotalMinutes < toMinutes
             } else {
-                // Перехід через північ: 20:30 - 00:00 або 23:00 - 01:00
                 currentTotalMinutes >= fromMinutes || currentTotalMinutes < toMinutes
             }
         }
@@ -269,6 +260,49 @@ class PowerScheduleWidget : AppWidgetProvider() {
 
             views.setTextViewText(R.id.widget_preview, preview)
             views.setTextViewText(R.id.widget_updated, updated)
+        }
+    }
+
+    override fun onUpdate(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetIds: IntArray
+    ) {
+        for (appWidgetId in appWidgetIds) {
+            updateAppWidget(context, appWidgetManager, appWidgetId)
+        }
+    }
+
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+
+        // Оновлюємо віджети при різних подіях
+        when (intent.action) {
+            Intent.ACTION_BOOT_COMPLETED,
+            Intent.ACTION_MY_PACKAGE_REPLACED,
+            ACTION_REFRESH -> {
+                val appWidgetManager = AppWidgetManager.getInstance(context)
+                val widgetComponent = ComponentName(context, PowerScheduleWidget::class.java)
+                val widgetIds = appWidgetManager.getAppWidgetIds(widgetComponent)
+                onUpdate(context, appWidgetManager, widgetIds)
+            }
+        }
+    }
+
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        // Перший віджет додано - запускаємо оновлення
+    }
+
+    override fun onDisabled(context: Context) {
+        super.onDisabled(context)
+        // Останній віджет видалено
+    }
+
+    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+        val storageService = StorageService.getInstance(context)
+        for (appWidgetId in appWidgetIds) {
+            storageService.removeWidgetQueueId(appWidgetId)
         }
     }
 }

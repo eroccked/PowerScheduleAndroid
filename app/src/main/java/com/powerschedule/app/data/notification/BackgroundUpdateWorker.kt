@@ -1,9 +1,12 @@
 package com.powerschedule.app.data.notification
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
 import androidx.work.*
 import com.powerschedule.app.data.api.APIService
 import com.powerschedule.app.data.storage.StorageService
+import com.powerschedule.app.widget.PowerScheduleWidget
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.concurrent.TimeUnit
@@ -26,6 +29,7 @@ class BackgroundUpdateWorker(
                 TimeUnit.MINUTES
             )
                 .setConstraints(constraints)
+                .setInitialDelay(1, TimeUnit.MINUTES)
                 .build()
 
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
@@ -33,6 +37,17 @@ class BackgroundUpdateWorker(
                 ExistingPeriodicWorkPolicy.UPDATE,
                 workRequest
             )
+        }
+
+        // Функція для примусового оновлення всіх віджетів
+        fun updateAllWidgets(context: Context) {
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val widgetComponent = ComponentName(context, PowerScheduleWidget::class.java)
+            val widgetIds = appWidgetManager.getAppWidgetIds(widgetComponent)
+
+            widgetIds.forEach { widgetId ->
+                PowerScheduleWidget.updateAppWidget(context, appWidgetManager, widgetId)
+            }
         }
     }
 
@@ -59,6 +74,9 @@ class BackgroundUpdateWorker(
                     storageService.saveScheduleJSON(jsonString, queue.id)
                 }
             }
+
+            // Оновлюємо всі віджети після завантаження даних
+            updateAllWidgets(applicationContext)
 
             Result.success()
         } catch (e: Exception) {

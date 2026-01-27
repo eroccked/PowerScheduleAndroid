@@ -69,7 +69,7 @@ fun SettingsScreen(
                         Spacer(Modifier.width(14.dp))
                         Column {
                             Text("Графік Світла", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                            Text("Версія 1.1.2", fontSize = 13.sp, color = TextSecondary)
+                            Text("Версія 1.1.3", fontSize = 13.sp, color = TextSecondary)
                         }
                     }
                 }
