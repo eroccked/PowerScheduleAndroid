@@ -103,79 +103,89 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val isToday = isDateToday(scheduleData.eventDate)
                 val isTomorrow = isDateTomorrow(scheduleData.eventDate)
 
-                // Перевіряємо чи зараз відключення (з урахуванням переходу через північ)
-                val isPowerOn = if (isToday) {
-                    !scheduleData.shutdowns.any { shutdown ->
+                // Перевіряємо чи зараз відключення
+                val isPowerOn: Boolean
+                val preview: String
+
+                if (isToday) {
+                    // Графік на сьогодні - стандартна логіка
+                    isPowerOn = !scheduleData.shutdowns.any { shutdown ->
                         isCurrentlyInShutdown(shutdown, currentTotalMinutes)
                     }
-                } else {
-                    true
-                }
 
-                // Майбутні відключення сьогодні (які ще не почались)
-                val futureShutdownsToday = if (isToday) {
-                    scheduleData.shutdowns.filter { shutdown ->
+                    val futureShutdownsToday = scheduleData.shutdowns.filter { shutdown ->
                         isFutureShutdown(shutdown, currentTotalMinutes)
                     }
-                } else {
-                    emptyList()
-                }
 
-                val preview = when {
-                    // Графік на завтра
-                    isTomorrow -> {
-                        if (scheduleData.shutdowns.isNotEmpty()) {
-                            val firstShutdown = scheduleData.shutdowns.first()
-                            val fromParts = firstShutdown.from.split(":").mapNotNull { it.toIntOrNull() }
-
-                            if (fromParts.size == 2) {
-                                val shutdownHour = fromParts[0]
-
-                                when {
-                                    // Відключення о 00:00-02:59 і зараз вечір (після 20:00) - "сьогодні вночі"
-                                    shutdownHour < 3 && currentHour >= 20 -> {
-                                        "Сьогодні вночі о ${firstShutdown.from}"
-                                    }
-                                    // Відключення о 20:00-23:59 - це сьогодні ввечері, не завтра!
-                                    shutdownHour >= 20 -> {
-                                        "Сьогодні о ${firstShutdown.from}"
-                                    }
-                                    // Звичайний випадок - завтра
-                                    else -> {
-                                        "Завтра відключення о ${firstShutdown.from}"
-                                    }
-                                }
-                            } else {
-                                "Завтра відключення о ${firstShutdown.from}"
+                    preview = when {
+                        !isPowerOn -> {
+                            val currentShutdown = scheduleData.shutdowns.firstOrNull { shutdown ->
+                                isCurrentlyInShutdown(shutdown, currentTotalMinutes)
                             }
-                        } else {
-                            "Завтра відключень немає"
+                            if (currentShutdown != null) {
+                                "Увімкнуть о ${currentShutdown.to}"
+                            } else {
+                                "Поточний стан невідомий"
+                            }
+                        }
+                        futureShutdownsToday.isNotEmpty() -> {
+                            "Відключення о ${futureShutdownsToday.first().from}"
+                        }
+                        scheduleData.shutdowns.isNotEmpty() -> {
+                            "Сьогодні відключень більше немає"
+                        }
+                        else -> {
+                            "Відключень немає"
                         }
                     }
-                    // Зараз відключення
-                    !isPowerOn -> {
-                        val currentShutdown = scheduleData.shutdowns.firstOrNull { shutdown ->
-                            isCurrentlyInShutdown(shutdown, currentTotalMinutes)
-                        }
+                } else if (isTomorrow) {
+                    // Графік на завтра - перевіряємо чи відключення вже стосується нас
+                    val currentlyInTomorrowShutdown = scheduleData.shutdowns.any { shutdown ->
+                        isCurrentlyInTomorrowShutdown(shutdown, currentTotalMinutes)
+                    }
 
+                    isPowerOn = !currentlyInTomorrowShutdown
+
+                    preview = if (currentlyInTomorrowShutdown) {
+                        // Ми зараз у відключенні яке перейшло через північ
+                        val currentShutdown = scheduleData.shutdowns.firstOrNull { shutdown ->
+                            isCurrentlyInTomorrowShutdown(shutdown, currentTotalMinutes)
+                        }
                         if (currentShutdown != null) {
                             "Увімкнуть о ${currentShutdown.to}"
                         } else {
-                            "Поточний стан невідомий"
+                            "Відключення"
                         }
+                    } else if (scheduleData.shutdowns.isNotEmpty()) {
+                        val firstShutdown = scheduleData.shutdowns.first()
+                        val fromParts = firstShutdown.from.split(":").mapNotNull { it.toIntOrNull() }
+
+                        if (fromParts.size == 2) {
+                            val shutdownHour = fromParts[0]
+
+                            when {
+                                // Відключення о 00:00-02:59 і зараз вечір (після 20:00) - "сьогодні вночі"
+                                shutdownHour < 3 && currentHour >= 20 -> {
+                                    "Сьогодні вночі о ${firstShutdown.from}"
+                                }
+                                // Відключення о 20:00-23:59 - це сьогодні ввечері!
+                                shutdownHour >= 20 -> {
+                                    "Сьогодні о ${firstShutdown.from}"
+                                }
+                                else -> {
+                                    "Завтра відключення о ${firstShutdown.from}"
+                                }
+                            }
+                        } else {
+                            "Завтра відключення о ${firstShutdown.from}"
+                        }
+                    } else {
+                        "Завтра відключень немає"
                     }
-                    // Є майбутні відключення сьогодні
-                    futureShutdownsToday.isNotEmpty() -> {
-                        "Відключення о ${futureShutdownsToday.first().from}"
-                    }
-                    // Всі відключення сьогодні минули
-                    scheduleData.shutdowns.isNotEmpty() -> {
-                        "Сьогодні відключень більше немає"
-                    }
-                    // Відключень немає
-                    else -> {
-                        "Відключень немає"
-                    }
+                } else {
+                    // Невідома дата
+                    isPowerOn = true
+                    preview = "Графік недоступний"
                 }
 
                 updateQueueCardState(queue.id) {
@@ -211,10 +221,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val cache = storageService.loadScheduleCache(queue.id)
 
                 if (cache != null && isDateToday(cache.eventDate)) {
-                    // Є кеш на сьогодні - показуємо його
                     try {
-                        val shutdowns: List<com.powerschedule.app.data.models.Shutdown> =
-                            json.decodeFromString(cache.shutdownsJson)
+                        val shutdowns: List<Shutdown> = json.decodeFromString(cache.shutdownsJson)
 
                         val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
                         val currentMinute = Calendar.getInstance().get(Calendar.MINUTE)
@@ -266,11 +274,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             )
                         }
                     } catch (e: Exception) {
-                        // Не вдалося розпарсити кеш
                         showNoConnectionState(queue.id)
                     }
                 } else {
-                    // Кешу немає або він застарілий
                     showNoConnectionState(queue.id)
                 }
             }
@@ -289,6 +295,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
         }
     }
+
     /**
      * Перевіряє чи відключення ще не почалось (в майбутньому)
      */
@@ -298,15 +305,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         val fromMinutes = fromParts[0] * 60 + fromParts[1]
 
-        // Відключення в майбутньому, якщо:
-        // 1. Час початку більший за поточний
-        // 2. І ми зараз НЕ в цьому відключенні
         return fromMinutes > currentTotalMinutes && !isCurrentlyInShutdown(shutdown, currentTotalMinutes)
     }
 
     /**
-     * Перевіряє чи поточний час потрапляє в період відключення
-     * Враховує перехід через північ (наприклад 23:00 - 01:00 або 20:30 - 00:00)
+     * Перевіряє чи поточний час потрапляє в період відключення (для сьогоднішнього графіка)
      */
     private fun isCurrentlyInShutdown(shutdown: Shutdown, currentTotalMinutes: Int): Boolean {
         val fromParts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
@@ -321,9 +324,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             // Звичайний випадок: 08:00 - 12:00
             currentTotalMinutes >= fromMinutes && currentTotalMinutes < toMinutes
         } else {
-            // Перехід через північ: 20:30 - 00:00 або 23:00 - 01:00
+            // Перехід через північ: 23:00 - 01:00
             currentTotalMinutes >= fromMinutes || currentTotalMinutes < toMinutes
         }
+    }
+        private fun isCurrentlyInTomorrowShutdown(shutdown: Shutdown, currentTotalMinutes: Int): Boolean {
+        val fromParts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
+        val toParts = shutdown.to.split(":").mapNotNull { it.toIntOrNull() }
+
+        if (fromParts.size != 2 || toParts.size != 2) return false
+
+        val fromMinutes = fromParts[0] * 60 + fromParts[1]
+        val toMinutes = toParts[0] * 60 + toParts[1]
+
+        if (toMinutes < fromMinutes || (toMinutes <= fromMinutes && toMinutes > 0)) {
+            if (currentTotalMinutes >= fromMinutes) {
+                return true
+            }
+        }
+
+        return false
     }
 
     private fun startBackgroundUpdates() {

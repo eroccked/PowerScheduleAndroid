@@ -102,61 +102,76 @@ class PowerScheduleWidget : AppWidgetProvider() {
                         true
                     }
 
-                    val isPowerOn = if (isToday) {
-                        !scheduleData.shutdowns.any { shutdown ->
+                    val isTomorrow = try {
+                        val eventDate = dateFormatter.parse(scheduleData.eventDate)
+                        val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
+                        val eventCal = Calendar.getInstance().apply { time = eventDate!! }
+                        tomorrow.get(Calendar.YEAR) == eventCal.get(Calendar.YEAR) &&
+                                tomorrow.get(Calendar.DAY_OF_YEAR) == eventCal.get(Calendar.DAY_OF_YEAR)
+                    } catch (e: Exception) {
+                        false
+                    }
+
+                    val isPowerOn: Boolean
+                    val preview: String
+
+                    if (isToday) {
+                        isPowerOn = !scheduleData.shutdowns.any { shutdown ->
                             isCurrentlyInShutdown(shutdown, currentTotalMinutes)
                         }
-                    } else true
 
-                    val futureShutdownsToday = if (isToday) {
-                        scheduleData.shutdowns.filter { shutdown ->
+                        val futureShutdownsToday = scheduleData.shutdowns.filter { shutdown ->
                             isFutureShutdown(shutdown, currentTotalMinutes)
                         }
-                    } else emptyList()
 
-                    val preview = when {
-                        !isToday -> {
-                            if (scheduleData.shutdowns.isNotEmpty()) {
-                                val firstShutdown = scheduleData.shutdowns.first()
-                                val fromParts = firstShutdown.from.split(":").mapNotNull { it.toIntOrNull() }
-
-                                if (fromParts.size == 2) {
-                                    val shutdownHour = fromParts[0]
-
-                                    when {
-                                        // Відключення о 00:00-02:59 і зараз вечір - "вночі"
-                                        shutdownHour < 3 && currentHour >= 20 -> {
-                                            "Вночі о ${firstShutdown.from}"
-                                        }
-                                        // Відключення о 20:00-23:59 - це сьогодні!
-                                        shutdownHour >= 20 -> {
-                                            "Сьогодні о ${firstShutdown.from}"
-                                        }
-                                        // Звичайний випадок
-                                        else -> {
-                                            "Завтра о ${firstShutdown.from}"
-                                        }
-                                    }
-                                } else {
-                                    "Завтра о ${firstShutdown.from}"
+                        preview = when {
+                            !isPowerOn -> {
+                                val currentShutdown = scheduleData.shutdowns.firstOrNull { shutdown ->
+                                    isCurrentlyInShutdown(shutdown, currentTotalMinutes)
                                 }
-                            } else "Завтра відключень немає"
+                                if (currentShutdown != null) "Увімкнуть о ${currentShutdown.to}"
+                                else "Відключення"
+                            }
+                            futureShutdownsToday.isNotEmpty() -> {
+                                "Відключення о ${futureShutdownsToday.first().from}"
+                            }
+                            scheduleData.shutdowns.isNotEmpty() -> "Сьогодні більше немає"
+                            else -> "Відключень немає"
+                        }
+                    } else if (isTomorrow) {
+                        // Перевіряємо чи ми в відключенні з завтрашнього графіка
+                        val currentlyInTomorrowShutdown = scheduleData.shutdowns.any { shutdown ->
+                            isCurrentlyInTomorrowShutdown(shutdown, currentTotalMinutes)
                         }
 
-                        !isPowerOn -> {
+                        isPowerOn = !currentlyInTomorrowShutdown
+
+                        preview = if (currentlyInTomorrowShutdown) {
                             val currentShutdown = scheduleData.shutdowns.firstOrNull { shutdown ->
-                                isCurrentlyInShutdown(shutdown, currentTotalMinutes)
+                                isCurrentlyInTomorrowShutdown(shutdown, currentTotalMinutes)
                             }
                             if (currentShutdown != null) "Увімкнуть о ${currentShutdown.to}"
-                            else "Поточний стан"
-                        }
+                            else "Відключення"
+                        } else if (scheduleData.shutdowns.isNotEmpty()) {
+                            val firstShutdown = scheduleData.shutdowns.first()
+                            val fromParts = firstShutdown.from.split(":").mapNotNull { it.toIntOrNull() }
 
-                        futureShutdownsToday.isNotEmpty() -> {
-                            "Відключення о ${futureShutdownsToday.first().from}"
+                            if (fromParts.size == 2) {
+                                val shutdownHour = fromParts[0]
+                                when {
+                                    shutdownHour < 3 && currentHour >= 20 -> "Вночі о ${firstShutdown.from}"
+                                    shutdownHour >= 20 -> "Сьогодні о ${firstShutdown.from}"
+                                    else -> "Завтра о ${firstShutdown.from}"
+                                }
+                            } else {
+                                "Завтра о ${firstShutdown.from}"
+                            }
+                        } else {
+                            "Завтра відключень немає"
                         }
-
-                        scheduleData.shutdowns.isNotEmpty() -> "Сьогодні більше немає"
-                        else -> "Відключень немає"
+                    } else {
+                        isPowerOn = true
+                        preview = "Графік недоступний"
                     }
 
                     val status = if (isPowerOn) "Світло є" else "Відключення"
@@ -183,10 +198,8 @@ class PowerScheduleWidget : AppWidgetProvider() {
                     appWidgetManager.updateAppWidget(appWidgetId, views)
 
                 }.onFailure {
-                    // При помилці показуємо кеш якщо є, інакше "Невідомо"
                     val cachedData = storageService.loadWidgetCache(appWidgetId)
                     if (cachedData != null) {
-                        // Оновлюємо тільки час
                         val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
                         val updated = "⚠️ ${timeFormatter.format(Date())}"
 
@@ -238,6 +251,26 @@ class PowerScheduleWidget : AppWidgetProvider() {
             }
         }
 
+        private fun isCurrentlyInTomorrowShutdown(shutdown: Shutdown, currentTotalMinutes: Int): Boolean {
+            val fromParts = shutdown.from.split(":").mapNotNull { it.toIntOrNull() }
+            val toParts = shutdown.to.split(":").mapNotNull { it.toIntOrNull() }
+
+            if (fromParts.size != 2 || toParts.size != 2) return false
+
+            val fromMinutes = fromParts[0] * 60 + fromParts[1]
+            val toMinutes = toParts[0] * 60 + toParts[1]
+
+            // Якщо відключення переходить через північ і починається ввечері
+            if (fromMinutes > toMinutes && fromMinutes >= 20 * 60) {
+                // Перевіряємо чи зараз ми у вечірній частині
+                if (currentTotalMinutes >= fromMinutes) {
+                    return true
+                }
+            }
+
+            return false
+        }
+
         private fun applyDataToViews(
             views: RemoteViews,
             name: String,
@@ -276,7 +309,6 @@ class PowerScheduleWidget : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
 
-        // Оновлюємо віджети при різних подіях
         when (intent.action) {
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_MY_PACKAGE_REPLACED,
@@ -291,12 +323,10 @@ class PowerScheduleWidget : AppWidgetProvider() {
 
     override fun onEnabled(context: Context) {
         super.onEnabled(context)
-        // Перший віджет додано - запускаємо оновлення
     }
 
     override fun onDisabled(context: Context) {
         super.onDisabled(context)
-        // Останній віджет видалено
     }
 
     override fun onDeleted(context: Context, appWidgetIds: IntArray) {
