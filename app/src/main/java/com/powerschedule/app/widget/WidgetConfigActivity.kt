@@ -72,7 +72,8 @@ class WidgetConfigActivity : ComponentActivity() {
 
     private fun updateWidgetAndFinish() {
         val appWidgetManager = AppWidgetManager.getInstance(this)
-        PowerScheduleWidget.updateAppWidget(this, appWidgetManager, appWidgetId)
+        PowerScheduleWidget.showCached(this, appWidgetManager, appWidgetId)
+        WidgetUpdateWorker.enqueue(this)
 
         val resultValue = Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
         setResult(RESULT_OK, resultValue)

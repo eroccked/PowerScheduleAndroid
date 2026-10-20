@@ -3,6 +3,7 @@ package com.powerschedule.app.data.storage
 import android.content.Context
 import android.content.SharedPreferences
 import com.powerschedule.app.data.models.PowerQueue
+import com.powerschedule.app.data.models.ScheduleData
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -87,6 +88,20 @@ class StorageService private constructor(context: Context) {
 
     fun loadScheduleJSON(queueId: String): String? {
         return prefs.getString("$SCHEDULE_PREFIX$queueId", null)
+    }
+
+    // Повний графік для віджета - щоб перераховувати статус на межах відключень без мережі
+    fun saveWidgetSchedule(queueId: String, schedule: ScheduleData) {
+        prefs.edit().putString("widget_schedule_$queueId", json.encodeToString(schedule)).apply()
+    }
+
+    fun loadWidgetSchedule(queueId: String): ScheduleData? {
+        val stored = prefs.getString("widget_schedule_$queueId", null) ?: return null
+        return try {
+            json.decodeFromString<ScheduleData>(stored)
+        } catch (e: Exception) {
+            null
+        }
     }
 
     fun saveWidgetQueueId(widgetId: Int, queueId: String) {

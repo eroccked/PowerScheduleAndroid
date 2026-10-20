@@ -10,6 +10,7 @@ import com.powerschedule.app.data.models.Shutdown
 import com.powerschedule.app.data.notification.BackgroundUpdateWorker
 import com.powerschedule.app.data.notification.NotificationService
 import com.powerschedule.app.data.storage.StorageService
+import com.powerschedule.app.widget.WidgetUpdateWorker
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -60,6 +61,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         refreshJob = viewModelScope.launch {
             _queues.value.forEach { loadQueuePreview(it) }
         }
+
+        // Черги могли змінитись (додали/видалили) або користувач оновив вручну
+        WidgetUpdateWorker.enqueue(getApplication())
     }
 
     fun addQueue(name: String, queueNumber: String) {

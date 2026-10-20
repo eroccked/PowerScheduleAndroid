@@ -64,6 +64,7 @@ data class Shutdown(
 }
 
 
+@Serializable
 data class ScheduleData(
     val eventDate: String,
     val createdAt: String,
