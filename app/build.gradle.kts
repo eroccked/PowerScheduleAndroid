@@ -6,14 +6,14 @@ plugins {
 
 android {
     namespace = "com.powerschedule.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.powerschedule.app"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 15
-        versionName = "1.1.4"
+        targetSdk = 36
+        versionCode = 16
+        versionName = "1.1.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

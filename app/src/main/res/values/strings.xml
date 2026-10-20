@@ -24,7 +24,7 @@
 
     <!-- Time -->
     <string name="in_x_hours">через %d год</string>
-    <string name="in_x_hours_y_minutes">через %d год %d хв</string>
+    <string name="in_x_hours_y_minutes">через %1$d год %2$d хв</string>
     <string name="in_x_minutes">через %d хв</string>
     <string name="now">зараз</string>
 
