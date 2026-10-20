@@ -405,6 +405,7 @@ class PowerScheduleWidget : AppWidgetProvider() {
         val storageService = StorageService.getInstance(context)
         for (appWidgetId in appWidgetIds) {
             storageService.removeWidgetQueueId(appWidgetId)
+            storageService.removeWidgetCache(appWidgetId)
         }
     }
 }

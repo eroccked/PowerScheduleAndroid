@@ -53,6 +53,7 @@ class StorageService private constructor(context: Context) {
         val queues = loadQueues().toMutableList()
         queues.removeAll { it.id == queue.id }
         saveQueues(queues)
+        prefs.edit().remove("widget_schedule_${queue.id}").apply()
     }
 
     fun updateQueue(queue: PowerQueue) {
@@ -134,6 +135,16 @@ class StorageService private constructor(context: Context) {
             preview = prefs.getString("widget_cache_${widgetId}_preview", "") ?: "",
             updated = prefs.getString("widget_cache_${widgetId}_updated", "") ?: ""
         )
+    }
+
+    fun removeWidgetCache(widgetId: Int) {
+        prefs.edit()
+            .remove("widget_cache_${widgetId}_name")
+            .remove("widget_cache_${widgetId}_queue")
+            .remove("widget_cache_${widgetId}_status")
+            .remove("widget_cache_${widgetId}_preview")
+            .remove("widget_cache_${widgetId}_updated")
+            .apply()
     }
 
     data class WidgetCache(

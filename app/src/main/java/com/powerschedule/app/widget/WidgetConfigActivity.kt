@@ -93,6 +93,7 @@ fun WidgetConfigScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
+                .navigationBarsPadding()
         ) {
             TopAppBar(
                 title = { Text("Оберіть чергу", fontWeight = FontWeight.Bold) },
