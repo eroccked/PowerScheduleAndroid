@@ -169,12 +169,6 @@ class ScheduleViewModel(
                 secondDaySchedule = null
                 labels = Pair("Завтра", "")
             }
-            // Є вчора і сьогодні
-            yesterdayScheduleData != null && todayScheduleData != null -> {
-                firstDaySchedule = yesterdayScheduleData
-                secondDaySchedule = todayScheduleData
-                labels = Pair("Вчора", "Сьогодні")
-            }
             // Є тільки вчора
             yesterdayScheduleData != null -> {
                 firstDaySchedule = yesterdayScheduleData

@@ -9,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -82,7 +83,7 @@ fun SettingsScreen(
                             Text("${state.updateInterval} хв", fontSize = 14.sp, color = TextPrimary)
                             Icon(Icons.Default.UnfoldMore, null, Modifier.size(16.dp), tint = TextSecondary)
                         }
-                        Divider(Modifier.padding(start = 54.dp), color = TextTertiary.copy(alpha = 0.3f))
+                        HorizontalDivider(Modifier.padding(start = 54.dp), color = TextTertiary.copy(alpha = 0.3f))
                         SettingsRowItem(Icons.Default.Sync, "Оновити зараз", null, { viewModel.checkForUpdatesNow() })
                     }
                 }
@@ -96,14 +97,14 @@ fun SettingsScreen(
                                 colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = StatusGreen))
                         }
                         if (state.notificationsEnabled) {
-                            Divider(Modifier.padding(start = 60.dp), color = TextTertiary.copy(alpha = 0.3f))
+                            HorizontalDivider(Modifier.padding(start = 60.dp), color = TextTertiary.copy(alpha = 0.3f))
                             SettingsRowItem(Icons.Default.Schedule, "Попереджати за", viewModel.getNotificationTimeText(), onNavigateToNotificationTimePicker) {
                                 Icon(Icons.Default.ChevronRight, null, Modifier.size(14.dp), tint = TextTertiary)
                             }
                         }
-                        Divider(Modifier.padding(start = 60.dp), color = TextTertiary.copy(alpha = 0.3f))
+                        HorizontalDivider(Modifier.padding(start = 60.dp), color = TextTertiary.copy(alpha = 0.3f))
                         SettingsRowItem(Icons.Default.Settings, "Налаштування Android", null, { viewModel.openNotificationSettings() }) {
-                            Icon(Icons.Default.OpenInNew, null, Modifier.size(12.dp), tint = TextTertiary)
+                            Icon(Icons.AutoMirrored.Filled.OpenInNew, null, Modifier.size(12.dp), tint = TextTertiary)
                         }
                     }
                 }
@@ -112,8 +113,8 @@ fun SettingsScreen(
                 SectionHeader("Статистика")
                 AppCard {
                     Column(Modifier.padding(vertical = 8.dp)) {
-                        SettingsRowItem(Icons.Default.List, "Всього черг") { Text(state.totalQueues.toString(), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary) }
-                        Divider(Modifier.padding(start = 60.dp), color = TextTertiary.copy(alpha = 0.3f))
+                        SettingsRowItem(Icons.AutoMirrored.Filled.List, "Всього черг") { Text(state.totalQueues.toString(), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary) }
+                        HorizontalDivider(Modifier.padding(start = 60.dp), color = TextTertiary.copy(alpha = 0.3f))
                         SettingsRowItem(Icons.Default.CheckCircle, "Активних оновлень") { Text(state.activeQueues.toString(), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary) }
                     }
                 }
@@ -130,13 +131,13 @@ fun SettingsScreen(
                     Column {
                         SettingsRowItem(Icons.Default.Link, "Джерело даних", null, {
                             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://be-svitlo.oe.if.ua")))
-                        }) { Icon(Icons.Default.OpenInNew, null, Modifier.size(12.dp), tint = TextTertiary) }
+                        }) { Icon(Icons.AutoMirrored.Filled.OpenInNew, null, Modifier.size(12.dp), tint = TextTertiary) }
 
-                        Divider(Modifier.padding(start = 60.dp), color = TextTertiary.copy(alpha = 0.3f))
+                        HorizontalDivider(Modifier.padding(start = 60.dp), color = TextTertiary.copy(alpha = 0.3f))
 
-                        SettingsRowItem(Icons.Default.Send, "Розробник", "@buhra_t", {
+                        SettingsRowItem(Icons.AutoMirrored.Filled.Send, "Розробник", "@buhra_t", {
                             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/buhra_t")))
-                        }) { Icon(Icons.Default.OpenInNew, null, Modifier.size(12.dp), tint = TextTertiary) }
+                        }) { Icon(Icons.AutoMirrored.Filled.OpenInNew, null, Modifier.size(12.dp), tint = TextTertiary) }
                     }
                 }
 

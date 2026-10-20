@@ -517,9 +517,9 @@ private fun ScheduleContent(
             AppCard {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     InfoRow(Icons.Default.CalendarMonth, "Дата", scheduleData.eventDate)
-                    Divider(color = TextTertiary.copy(alpha = 0.3f))
+                    HorizontalDivider(color = TextTertiary.copy(alpha = 0.3f))
                     InfoRow(Icons.Default.Schedule, "Оновлено", scheduleData.createdAt)
-                    Divider(color = TextTertiary.copy(alpha = 0.3f))
+                    HorizontalDivider(color = TextTertiary.copy(alpha = 0.3f))
                     InfoRow(Icons.Default.Verified, "Затверджено з", scheduleData.scheduleApprovedSince)
                 }
             }
@@ -536,7 +536,7 @@ private fun ScheduleContent(
                         Switch(checked = notificationsEnabled, onCheckedChange = onNotificationsChanged,
                             colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = StatusGreen))
                     }
-                    Divider(Modifier.padding(start = 52.dp), color = TextTertiary.copy(alpha = 0.3f))
+                    HorizontalDivider(Modifier.padding(start = 52.dp), color = TextTertiary.copy(alpha = 0.3f))
                     Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Refresh, null, Modifier.size(14.dp), tint = TextPrimary)
                         Spacer(Modifier.width(12.dp))

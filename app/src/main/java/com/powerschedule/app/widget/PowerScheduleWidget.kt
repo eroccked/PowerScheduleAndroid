@@ -87,7 +87,7 @@ class PowerScheduleWidget : AppWidgetProvider() {
         // Оновлює всі віджети і планує наступне оновлення на найближчу межу відключення
         suspend fun refreshAllWidgets(context: Context) {
             val appWidgetManager = AppWidgetManager.getInstance(context)
-            val nextBoundaryDelays = getWidgetIds(context).mapNotNull { widgetId ->
+            val nextBoundaryDelays = getWidgetIds(context).toList().mapNotNull { widgetId ->
                 refreshWidget(context, appWidgetManager, widgetId)
             }
 
